@@ -97,7 +97,11 @@ function createRadarFrame(offset){
   if(playbackWait===offset){
    playbackWait=null;
    displayRadarFrame(offset);
+   preloadRadarFrames(offset);
    if(playing)playbackTimer=setTimeout(playNextFrame,1200);
+  }else if(Number(slider.value)===offset){
+   displayRadarFrame(offset);
+   preloadRadarFrames(offset);
   }
  });
  layer.on('tileerror',()=>{frame.error=true;});
