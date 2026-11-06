@@ -23,7 +23,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{display:flex;justify
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.leaflet-control-attribution{font-size:9px!important}
+.leaflet-control-attribution{font-size:9px!important}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(175deg)}
 </style>
 </head>
 <body>
@@ -37,7 +37,7 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
   <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Jetzt</div></div><button class="secondary" id="now">⟲ Jetzt</button></div>
   <div class="controls"><button class="play" id="play">▶</button><input id="slider" type="range" min="-30" max="90" step="5" value="0" aria-label="Radarzeitpunkt"></div>
   <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+90 Min.</span></div>
-  <div class="legend"><span><i class="dot" style="background:#ffffff;border:1px solid #9fb1c3"></i>leichter Regen</span><span><i class="dot" style="background:#9299a3"></i>mäßiger Regen</span><span><i class="dot" style="background:#168cff"></i>starker Regen</span><span><i class="dot" style="background:#071bba"></i>sehr starker Regen</span></div>
+  <div class="legend"><span><i class="dot" style="background:#b9e8ff;border:1px solid #8fb9d4"></i>leichter Regen</span><span><i class="dot" style="background:#65baff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
  </section>
 
 </main>
@@ -86,7 +86,7 @@ function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
  if(frame)return frame;
  const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
-  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2
+  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
  });
  frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),error:false};
  radarFrames.set(offset,frame);
