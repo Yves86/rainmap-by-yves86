@@ -38,11 +38,7 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
   <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+90 Min.</span></div>
   <div class="legend"><span><i class="dot" style="background:#ffffff;border:1px solid #9fb1c3"></i>leichter Regen</span><span><i class="dot" style="background:#9299a3"></i>mäßiger Regen</span><span><i class="dot" style="background:#168cff"></i>starker Regen</span><span><i class="dot" style="background:#071bba"></i>sehr starker Regen</span></div>
  </section>
- <section class="panel">
-  <div class="row"><strong>Radar-Information</strong><span class="small" id="state">Verbindung wird aufgebaut …</span></div>
-  <p class="note">Deine Farblegende ist festgelegt: Weiß = leichter Regen, Grau = mäßiger Regen, Blau = starker Regen, Dunkelblau = sehr starker Regen. Die DWD-Radarkacheln liefern derzeit ihre originale DWD-Farbgebung; die Legende ist deshalb noch nicht pixelgenau auf die Karte übertragen. Dafür ist ein zusätzlicher Bildverarbeitungsschritt nötig. Vergangene Zeitpunkte zeigen Radar-Beobachtungen; zukünftige Zeitpunkte sind eine kurzfristige Modellfortschreibung und keine sichere Vorhersage.</p>
-  <p class="note">Kartendaten: © OpenStreetMap-Mitwirkende · Wetterdaten: Deutscher Wetterdienst (DWD).</p>
- </section>
+
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -73,7 +69,7 @@ const radar=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',transparent:true,version:'1.1.1',opacity:.82
 });
 radar.addTo(map);
-const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state=document.getElementById('state'), play=document.getElementById('play');
+const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state={textContent:''}, play=document.getElementById('play');
 let timer=null;
 function update(){
  const offset=Number(slider.value), date=new Date(Date.now()+offset*60000);
