@@ -88,11 +88,12 @@ function createRadarFrame(offset){
  const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
   ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
  });
- frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),error:false};
+ frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0};
  radarFrames.set(offset,frame);
+ layer.on('tileload',()=>{frame.successfulTiles++;});
  layer.once('load',()=>{
   frame.loading=false;
-  if(frame.error){
+  if(frame.successfulTiles===0){
    map.removeLayer(layer);
    radarFrames.delete(offset);
    if(playbackWait===offset){
@@ -112,7 +113,6 @@ function createRadarFrame(offset){
    preloadRadarFrames(offset);
   }
  });
- layer.on('tileerror',()=>{frame.error=true;});
  layer.addTo(map);
  return frame;
 }
