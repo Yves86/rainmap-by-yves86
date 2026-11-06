@@ -92,8 +92,17 @@ function createRadarFrame(offset){
  frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),error:false};
  radarFrames.set(offset,frame);
  layer.once('load',()=>{
-  frame.ready=true;
   frame.loading=false;
+  if(frame.error){
+   map.removeLayer(layer);
+   radarFrames.delete(offset);
+   if(playbackWait===offset){
+    playbackWait=null;
+    if(playing)playbackTimer=setTimeout(playNextFrame,1200);
+   }
+   return;
+  }
+  frame.ready=true;
   if(playbackWait===offset){
    playbackWait=null;
    displayRadarFrame(offset);
@@ -130,7 +139,7 @@ function pruneRadarCache(keepOffset){
  }
 }
 function preloadRadarFrames(offset){
- [-5,5,10,15].forEach(step=>{
+ [5,10].forEach(step=>{
   const target=offset+step;
   if(target>=-30&&target<=90&&!radarFrames.has(target))createRadarFrame(target);
  });
