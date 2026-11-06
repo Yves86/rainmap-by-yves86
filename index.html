@@ -76,7 +76,7 @@ function update(){
  const offset=Number(slider.value), date=new Date(Date.now()+offset*60000);
  date.setUTCMinutes(Math.floor(date.getUTCMinutes()/5)*5,0,0);
  const iso=date.toISOString();
- radar.setParams({TIME:iso, _refresh:Date.now()});
+ radar.setParams({TIME:iso});
  label.textContent=offset===0?'Jetzt':(offset>0?'+' :'')+offset+' Min.';
  state.textContent=offset>0?'Nowcast-Zeitpunkt':offset<0?'Vergangener Radarzeitpunkt':'Aktueller Radarzeitpunkt';
 }
@@ -84,7 +84,7 @@ slider.addEventListener('input',update);
 document.getElementById('now').onclick=()=>{slider.value=0;update()};
 play.onclick=()=>{if(timer){clearInterval(timer);timer=null;play.textContent='▶';return}
  play.textContent='Ⅱ';if(Number(slider.value)>=90)slider.value=-30;
- timer=setInterval(()=>{let v=Number(slider.value)+5;if(v>90)v=-30;slider.value=v;update()},700)};
+ timer=setInterval(()=>{let v=Number(slider.value)+5;if(v>90)v=-30;slider.value=v;update()},1000)};
 function startGPS(){
  if(!('geolocation' in navigator)){gpsBadge.textContent='● GPS nicht verfügbar';placeName.textContent='GPS nicht unterstützt';placeDetail.textContent='Dieser Browser stellt keine Standortfunktion bereit.';return;}
  if(!window.isSecureContext){gpsBadge.textContent='● HTTPS nötig';placeName.textContent='GPS benötigt HTTPS';placeDetail.textContent='Öffne RainMap über eine sichere https-Adresse und erlaube den Standortzugriff.';state.textContent='GPS funktioniert aus Sicherheitsgründen nur in einem sicheren Kontext.';return;}
