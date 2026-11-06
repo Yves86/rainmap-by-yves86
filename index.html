@@ -70,10 +70,9 @@ const radarOptions={
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',
  transparent:true,version:'1.1.1',opacity:.82
 };
+let radarBaseTime=Math.floor(Date.now()/300000)*300000;
 function radarTime(offset){
- const date=new Date(Date.now()+offset*60000);
- date.setUTCMinutes(Math.floor(date.getUTCMinutes()/5)*5,0,0);
- return date.toISOString();
+ return new Date(radarBaseTime+offset*60000).toISOString();
 }
 const radarFrames=new Map();
 let radar=null, playbackTimer=null, playing=false, playbackWait=null;
