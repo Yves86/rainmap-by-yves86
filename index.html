@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07111f">
+<title>RainMap by Yves86</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:dark;--bg:#07111f;--panel:#101e30;--muted:#8ea4bc;--cyan:#57d8f5;--line:#24364b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eef6ff;font:15px system-ui,-apple-system,Segoe UI,sans-serif}
+header{padding:18px 18px 12px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-size:22px;font-weight:800;letter-spacing:.3px}.brand span{color:var(--cyan)}.sub{font-size:11px;color:var(--muted);letter-spacing:1.5px}
+.status{font-size:11px;color:#8de4ba;border:1px solid #285b4b;padding:6px 9px;border-radius:30px}
+main{padding:0 12px 18px;max-width:760px;margin:auto}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.place{display:flex;justify-content:space-between;align-items:center;gap:10px}.place strong{font-size:18px}.small{color:var(--muted);font-size:12px}
+#map{height:53vh;min-height:330px;border-radius:14px;overflow:hidden;background:#15283a}
+.mapwrap{position:relative}.maptag{position:absolute;z-index:500;top:12px;left:12px;background:#07111fe8;border:1px solid #34475c;border-radius:10px;padding:7px 10px;font-size:11px}
+.controls{display:flex;align-items:center;gap:10px;margin-top:13px}.play{background:var(--cyan);color:#06121d;border:0;border-radius:12px;padding:11px 16px;font-weight:800;font-size:15px}
+input[type=range]{width:100%;accent-color:var(--cyan)}.time{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-top:8px}
+.readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
+.note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.leaflet-control-attribution{font-size:9px!important}
+</style>
+</head>
+<body>
+<header><div><div class="brand">🌧️ Rain<span>Map</span></div><div class="sub">BY YVES86 · REGENRADAR</div></div><div class="status" id="gpsBadge">● GPS wartet</div></header>
+<main>
+ <section class="panel">
+  <div class="place"><div><div class="small">DEIN RADARSTANDORT</div><strong id="placeName">Standort wird ermittelt …</strong><div class="small" id="placeDetail">GPS wird angefragt</div></div><button class="secondary" id="locate">◎ Mein Standort</button></div>
+ </section>
+ <section class="panel">
+  <div class="mapwrap"><div id="map"></div><div class="maptag">DWD · RADAR / NOWCAST</div></div>
+  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Jetzt</div></div><button class="secondary" id="now">⟲ Jetzt</button></div>
+  <div class="controls"><button class="play" id="play">▶</button><input id="slider" type="range" min="-30" max="90" step="5" value="0" aria-label="Radarzeitpunkt"></div>
+  <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+90 Min.</span></div>
+  <div class="legend"><span><i class="dot" style="background:#ffffff;border:1px solid #9fb1c3"></i>leichter Regen</span><span><i class="dot" style="background:#9299a3"></i>mäßiger Regen</span><span><i class="dot" style="background:#168cff"></i>starker Regen</span><span><i class="dot" style="background:#071bba"></i>sehr starker Regen</span></div>
+ </section>
+ <section class="panel">
+  <div class="row"><strong>Radar-Information</strong><span class="small" id="state">Verbindung wird aufgebaut …</span></div>
+  <p class="note">Deine Farblegende ist festgelegt: Weiß = leichter Regen, Grau = mäßiger Regen, Blau = starker Regen, Dunkelblau = sehr starker Regen. Die DWD-Radarkacheln liefern derzeit ihre originale DWD-Farbgebung; die Legende ist deshalb noch nicht pixelgenau auf die Karte übertragen. Dafür ist ein zusätzlicher Bildverarbeitungsschritt nötig. Vergangene Zeitpunkte zeigen Radar-Beobachtungen; zukünftige Zeitpunkte sind eine kurzfristige Modellfortschreibung und keine sichere Vorhersage.</p>
+  <p class="note">Kartendaten: © OpenStreetMap-Mitwirkende · Wetterdaten: Deutscher Wetterdienst (DWD).</p>
+ </section>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const fallback=[51.85,11.58];
+const map=L.map('map',{zoomControl:false}).setView(fallback,8);
+L.control.zoom({position:'bottomright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+const marker=L.circleMarker(fallback,{radius:8,color:'#fff',weight:2,fillColor:'#57d8f5',fillOpacity:1}).addTo(map).bindPopup('GPS-Standort');
+let accuracyCircle=null, watchId=null, gpsReady=false;
+const placeName=document.getElementById('placeName'), placeDetail=document.getElementById('placeDetail'), gpsBadge=document.getElementById('gpsBadge');
+function applyPosition(position, centerMap=false){
+ const lat=position.coords.latitude, lon=position.coords.longitude, accuracy=Math.round(position.coords.accuracy);
+ const pt=[lat,lon]; marker.setLatLng(pt).bindPopup('Dein GPS-Standort<br>Genauigkeit: ca. '+accuracy+' m');
+ if(accuracyCircle) map.removeLayer(accuracyCircle);
+ accuracyCircle=L.circle(pt,{radius:accuracy,color:'#57d8f5',weight:1,fillColor:'#57d8f5',fillOpacity:.08}).addTo(map);
+ if(centerMap || !gpsReady) map.setView(pt,Math.max(map.getZoom(),10));
+ gpsReady=true; placeName.textContent='Dein GPS-Standort';
+ placeDetail.textContent=lat.toFixed(5)+'°, '+lon.toFixed(5)+'° · Genauigkeit ca. '+accuracy+' m';
+ gpsBadge.textContent='● GPS aktiv'; state.textContent='GPS-Position aktualisiert';
+}
+function gpsError(error){
+ const messages={1:'Standortfreigabe abgelehnt',2:'GPS-Position nicht verfügbar',3:'GPS-Anfrage dauerte zu lange'};
+ gpsBadge.textContent='● GPS nicht aktiv'; placeName.textContent='Standort nicht verfügbar';
+ placeDetail.textContent=messages[error.code]||'GPS konnte nicht gestartet werden';
+ state.textContent=placeDetail.textContent;
+}
+const radar=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
+ layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',transparent:true,version:'1.1.1',opacity:.82
+});
+radar.addTo(map);
+const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state=document.getElementById('state'), play=document.getElementById('play');
+let timer=null;
+function update(){
+ const offset=Number(slider.value), date=new Date(Date.now()+offset*60000);
+ date.setUTCMinutes(Math.floor(date.getUTCMinutes()/5)*5,0,0);
+ const iso=date.toISOString();
+ radar.setParams({TIME:iso, _refresh:Date.now()});
+ label.textContent=offset===0?'Jetzt':(offset>0?'+' :'')+offset+' Min.';
+ state.textContent=offset>0?'Nowcast-Zeitpunkt':offset<0?'Vergangener Radarzeitpunkt':'Aktueller Radarzeitpunkt';
+}
+slider.addEventListener('input',update);
+document.getElementById('now').onclick=()=>{slider.value=0;update()};
+play.onclick=()=>{if(timer){clearInterval(timer);timer=null;play.textContent='▶';return}
+ play.textContent='Ⅱ';if(Number(slider.value)>=90)slider.value=-30;
+ timer=setInterval(()=>{let v=Number(slider.value)+5;if(v>90)v=-30;slider.value=v;update()},700)};
+function startGPS(){
+ if(!('geolocation' in navigator)){gpsBadge.textContent='● GPS nicht verfügbar';placeName.textContent='GPS nicht unterstützt';placeDetail.textContent='Dieser Browser stellt keine Standortfunktion bereit.';return;}
+ if(!window.isSecureContext){gpsBadge.textContent='● HTTPS nötig';placeName.textContent='GPS benötigt HTTPS';placeDetail.textContent='Öffne RainMap über eine sichere https-Adresse und erlaube den Standortzugriff.';state.textContent='GPS funktioniert aus Sicherheitsgründen nur in einem sicheren Kontext.';return;}
+ gpsBadge.textContent='● GPS sucht …';
+ navigator.geolocation.getCurrentPosition(p=>applyPosition(p,true),gpsError,{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+ if(watchId!==null) navigator.geolocation.clearWatch(watchId);
+ watchId=navigator.geolocation.watchPosition(p=>applyPosition(p,false),gpsError,{enableHighAccuracy:true,timeout:20000,maximumAge:15000});
+}
+document.getElementById('locate').onclick=()=>{if(gpsReady){map.setView(marker.getLatLng(),11);marker.openPopup();}else startGPS();};
+update(); startGPS();
+setTimeout(()=>{if(!gpsReady && gpsBadge.textContent==='● GPS sucht …')state.textContent='Warte auf GPS-Freigabe …'},1800);
+</script>
+</body></html>
