@@ -97,7 +97,7 @@ function createRadarFrame(offset){
    radarFrames.delete(offset);
    if(playbackWait===offset){
     playbackWait=null;
-    if(playing)playbackTimer=setTimeout(playNextFrame,1200);
+    if(playing)playbackTimer=setTimeout(playNextFrame,950);
    }
    return;
   }
@@ -106,7 +106,7 @@ function createRadarFrame(offset){
    playbackWait=null;
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
-   if(playing)playbackTimer=setTimeout(playNextFrame,1200);
+   if(playing)playbackTimer=setTimeout(playNextFrame,950);
   }else if(Number(slider.value)===offset){
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
@@ -173,7 +173,7 @@ function playNextFrame(){
  if(frame.ready){
   displayRadarFrame(value);
   preloadRadarFrames(value);
-  playbackTimer=setTimeout(playNextFrame,1200);
+  playbackTimer=setTimeout(playNextFrame,950);
  }else{
   playbackWait=value;
   preloadRadarFrames(value);
