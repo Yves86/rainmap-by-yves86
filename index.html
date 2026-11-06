@@ -75,44 +75,67 @@ function radarTime(offset){
  date.setUTCMinutes(Math.floor(date.getUTCMinutes()/5)*5,0,0);
  return date.toISOString();
 }
-function makeRadarLayer(offset,opacity){
- return L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
-  ...radarOptions,TIME:radarTime(offset),opacity
- });
-}
-let radar=makeRadarLayer(0,.82);
-radar.addTo(map);
-let pendingRadar=null, swapTimer=null, playbackTimer=null, playing=false, requestedOffset=0;
+const radarFrames=new Map();
+let radar=null, playbackTimer=null, playing=false, playbackWait=null;
 const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state={textContent:''}, play=document.getElementById('play');
 
 function showTime(offset){
  label.textContent=offset===0?'Jetzt':(offset>0?'+' :'')+offset+' Min.';
  state.textContent=offset>0?'Nowcast-Zeitpunkt':offset<0?'Vergangener Radarzeitpunkt':'Aktueller Radarzeitpunkt';
 }
-function stopPendingRadar(){
- if(pendingRadar){map.removeLayer(pendingRadar);pendingRadar=null;}
- if(swapTimer){clearTimeout(swapTimer);swapTimer=null;}
+function createRadarFrame(offset){
+ let frame=radarFrames.get(offset);
+ if(frame)return frame;
+ const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
+  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2
+ });
+ frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),error:false};
+ radarFrames.set(offset,frame);
+ layer.once('load',()=>{
+  frame.ready=true;
+  frame.loading=false;
+  if(playbackWait===offset){
+   playbackWait=null;
+   displayRadarFrame(offset);
+   if(playing)playbackTimer=setTimeout(playNextFrame,1200);
+  }
+ });
+ layer.on('tileerror',()=>{frame.error=true;});
+ layer.addTo(map);
+ return frame;
 }
-function requestRadar(offset,afterLoad){
- requestedOffset=offset;
- stopPendingRadar();
- const next=makeRadarLayer(offset,0);
- pendingRadar=next;
- let finished=false;
- next.once('load',()=>{
-  if(finished || pendingRadar!==next)return;
-  finished=true;
-  const previous=radar;
-  radar=next;
-  pendingRadar=null;
-  next.setOpacity(.82);
-  swapTimer=setTimeout(()=>{if(previous!==radar)map.removeLayer(previous);swapTimer=null;},400);
-  if(afterLoad)afterLoad();
+function displayRadarFrame(offset){
+ const frame=radarFrames.get(offset);
+ if(!frame||!frame.ready)return false;
+ if(radar&&radar!==frame.layer)radar.setOpacity(0);
+ radar=frame.layer;
+ radar.setOpacity(.82);
+ frame.lastUsed=Date.now();
+ pruneRadarCache(offset);
+ return true;
+}
+function pruneRadarCache(keepOffset){
+ if(radarFrames.size<=7)return;
+ const candidates=[...radarFrames.values()]
+  .filter(frame=>frame.offset!==keepOffset&&frame.layer!==radar)
+  .sort((a,b)=>a.lastUsed-b.lastUsed);
+ while(radarFrames.size>7&&candidates.length){
+  const old=candidates.shift();
+  map.removeLayer(old.layer);
+  radarFrames.delete(old.offset);
+ }
+}
+function preloadRadarFrames(offset){
+ [-5,5,10,15].forEach(step=>{
+  const target=offset+step;
+  if(target>=-30&&target<=90&&!radarFrames.has(target))createRadarFrame(target);
  });
- next.once('tileerror',()=>{
-  // Keep the previous complete radar frame visible if the new frame fails.
- });
- next.addTo(map);
+}
+function requestRadar(offset){
+ const frame=createRadarFrame(offset);
+ frame.lastUsed=Date.now();
+ if(frame.ready)displayRadarFrame(offset);
+ preloadRadarFrames(offset);
 }
 function update(){
  const offset=Number(slider.value);
@@ -123,6 +146,7 @@ slider.addEventListener('input',update);
 document.getElementById('now').onclick=()=>{slider.value=0;update()};
 function stopPlayback(){
  playing=false;
+ playbackWait=null;
  if(playbackTimer){clearTimeout(playbackTimer);playbackTimer=null;}
  play.textContent='▶';
 }
@@ -132,10 +156,16 @@ function playNextFrame(){
  if(value>90)value=-30;
  slider.value=value;
  showTime(value);
- requestRadar(value,()=>{
-  if(!playing)return;
-  playbackTimer=setTimeout(playNextFrame,450);
- });
+ const frame=createRadarFrame(value);
+ frame.lastUsed=Date.now();
+ if(frame.ready){
+  displayRadarFrame(value);
+  preloadRadarFrames(value);
+  playbackTimer=setTimeout(playNextFrame,1200);
+ }else{
+  playbackWait=value;
+  preloadRadarFrames(value);
+ }
 }
 play.onclick=()=>{
  if(playing){stopPlayback();return;}
@@ -144,6 +174,8 @@ play.onclick=()=>{
  if(Number(slider.value)>=90)slider.value=-30;
  playNextFrame();
 };
+createRadarFrame(0);
+requestRadar(0);
 function startGPS(){
  if(!('geolocation' in navigator)){gpsBadge.textContent='● GPS nicht verfügbar';placeName.textContent='GPS nicht unterstützt';placeDetail.textContent='Dieser Browser stellt keine Standortfunktion bereit.';return;}
  if(!window.isSecureContext){gpsBadge.textContent='● HTTPS nötig';placeName.textContent='GPS benötigt HTTPS';placeDetail.textContent='Öffne RainMap über eine sichere https-Adresse und erlaube den Standortzugriff.';state.textContent='GPS funktioniert aus Sicherheitsgründen nur in einem sicheren Kontext.';return;}
