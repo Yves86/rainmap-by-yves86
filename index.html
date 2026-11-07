@@ -16,7 +16,8 @@ header{padding:18px 18px 12px;display:flex;justify-content:space-between;align-i
 main{padding:0 12px 18px;max-width:760px;margin:auto}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
 .place{display:flex;justify-content:space-between;align-items:center;gap:10px}.place strong{font-size:18px}.small{color:var(--muted);font-size:12px}
-#map{height:53vh;min-height:330px;border-radius:14px;overflow:hidden;background:#15283a}
+#map{height:53vh;min-height:330px;border-radius:14px;overflow:hidden;background:#101923}
+.leaflet-control-attribution{background:rgba(7,17,31,.82)!important;color:#9fb2c8!important}.leaflet-control-attribution a{color:#57d8f5!important}
 .mapwrap{position:relative}.maptag{position:absolute;z-index:500;top:12px;left:12px;background:#07111fe8;border:1px solid #34475c;border-radius:10px;padding:7px 10px;font-size:11px}
 .controls{display:flex;align-items:center;gap:10px;margin-top:13px}.play{flex:0 0 48px;width:48px;height:44px;padding:0;background:var(--cyan);color:#06121d;border:0;border-radius:12px;font-weight:800;font-size:15px}
 input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;height:14px;color:var(--muted);font-size:11px;margin:-8px 0 0 58px;width:calc(100% - 58px)}.time span{position:absolute;top:0;white-space:nowrap}.time span:nth-child(1){left:0}.time span:nth-child(2){left:25%;transform:translateX(-50%)}.time span:nth-child(3){right:0}
@@ -46,16 +47,20 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
 const fallback=[51.85,11.58];
 const map=L.map('map',{zoomControl:false}).setView(fallback,8);
 L.control.zoom({position:'bottomright'}).addTo(map);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap'}).addTo(map);
+// Dunkle CARTO-Basiskarte mit OpenStreetMap-Daten und gut lesbaren Orts-/Straßennamen.
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
 const marker=L.circleMarker(fallback,{radius:8,color:'#fff',weight:2,fillColor:'#57d8f5',fillOpacity:1}).addTo(map).bindPopup('GPS-Standort');
-let accuracyCircle=null, watchId=null, gpsReady=false;
+const coverageRadius=20000;
+let accuracyCircle=null, coverageCircle=null, watchId=null, gpsReady=false;
 const placeName=document.getElementById('placeName'), placeDetail=document.getElementById('placeDetail'), gpsBadge=document.getElementById('gpsBadge');
 function applyPosition(position, centerMap=false){
  const lat=position.coords.latitude, lon=position.coords.longitude, accuracy=Math.round(position.coords.accuracy);
  const pt=[lat,lon]; marker.setLatLng(pt).bindPopup('Dein GPS-Standort<br>Genauigkeit: ca. '+accuracy+' m');
  if(accuracyCircle) map.removeLayer(accuracyCircle);
  accuracyCircle=L.circle(pt,{radius:accuracy,color:'#57d8f5',weight:1,fillColor:'#57d8f5',fillOpacity:.08}).addTo(map);
- if(centerMap || !gpsReady) map.setView(pt,Math.max(map.getZoom(),10));
+ if(coverageCircle) map.removeLayer(coverageCircle);
+ coverageCircle=L.circle(pt,{radius:coverageRadius,color:'#57d8f5',weight:1.5,dashArray:'6 7',fillColor:'#57d8f5',fillOpacity:.025,interactive:false}).addTo(map);
+ if(centerMap || !gpsReady) map.fitBounds(coverageCircle.getBounds(),{padding:[18,18],maxZoom:10});
  gpsReady=true; placeName.textContent='Dein GPS-Standort';
  placeDetail.textContent=lat.toFixed(5)+'°, '+lon.toFixed(5)+'° · Genauigkeit ca. '+accuracy+' m';
  gpsBadge.textContent='● GPS aktiv'; state.textContent='GPS-Position aktualisiert';
@@ -211,7 +216,7 @@ function startGPS(){
  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
  watchId=navigator.geolocation.watchPosition(p=>applyPosition(p,false),gpsError,{enableHighAccuracy:true,timeout:20000,maximumAge:15000});
 }
-document.getElementById('locate').onclick=()=>{if(gpsReady){map.setView(marker.getLatLng(),11);marker.openPopup();}else startGPS();};
+document.getElementById('locate').onclick=()=>{if(gpsReady){if(coverageCircle)map.fitBounds(coverageCircle.getBounds(),{padding:[18,18],maxZoom:10});marker.openPopup();}else startGPS();};
 update(); startGPS();
 setTimeout(()=>{if(!gpsReady && gpsBadge.textContent==='● GPS sucht …')state.textContent='Warte auf GPS-Freigabe …'},1800);
 </script>
