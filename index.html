@@ -190,6 +190,10 @@ function gpsError(error){
  const messages={1:'Standortfreigabe abgelehnt',2:'GPS-Position nicht verfügbar',3:'GPS-Anfrage dauerte zu lange'};
  gpsBadge.textContent='● GPS nicht aktiv'; placeName.textContent='Standort nicht verfügbar';
  placeDetail.textContent=messages[error.code]||'GPS konnte nicht gestartet werden';
+ const local=document.getElementById('localRain'),arrival=document.getElementById('rainArrival');
+ if(local&&/wird geprüft/i.test(local.textContent))local.textContent='GPS-Standort fehlt';
+ if(arrival&&/wird berechnet/i.test(arrival.textContent))arrival.textContent='Standortfreigabe prüfen';
+ refreshCockpit();
 }
 const radarOptions={
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',
@@ -216,7 +220,7 @@ function setRadarStatus(message,type='ok'){
 }
 function refreshCockpit(){
  const ageText=analysisTime.textContent||'';
- const match=ageText.match(/vor\\s+(\\d+)\\s+Min/i);
+ const match=ageText.match(/vor\s+(\d+)\s+Min/i);
  const age=match?Number(match[1]):null;
  const rainText=(document.getElementById('localRain')?.textContent||'').trim();
  const arrivalText=(document.getElementById('rainArrival')?.textContent||'').trim();
@@ -226,6 +230,7 @@ function refreshCockpit(){
  const bar=document.getElementById('cockpitFreshBar');
  const radius=document.getElementById('cockpitRadius');
  const status=document.getElementById('cockpitStatus');
+ const radarState=(dataState?.textContent||'').trim();
  if(rain){
   if(/kein regen/i.test(rainText)){rain.textContent='Aktuell trocken';}
   else if(/regen/i.test(rainText)&&!/wird geprüft/i.test(rainText)){rain.textContent='Regen erkannt';}
@@ -235,7 +240,12 @@ function refreshCockpit(){
  if(ageNode)ageNode.textContent=age===null?'Wird geladen':age===0?'Gerade aktualisiert':'vor '+age+' Min.';
  if(bar)bar.style.width=age===null?'0%':Math.max(5,Math.min(100,100-age*6))+'%';
  if(radius)radius.textContent=selectedRadius+' km';
- if(status)status.textContent=age===null?'Warte auf DWD-Daten':age>15?'Daten könnten veraltet sein':'DWD-Radar verbunden · Aktualisierung '+(age<=2?'sehr frisch':'läuft');
+ if(status){
+  if(age!==null)status.textContent=age>15?'DWD-Daten könnten veraltet sein':'DWD-Radar verbunden · '+(age<=2?'gerade aktualisiert':'Datenalter '+age+' Min.');
+  else if(/nicht erreichbar|nicht verfügbar|fehler|fehlgeschlagen/i.test(radarState))status.textContent='DWD-Radar derzeit nicht erreichbar';
+  else if(/teilweise/i.test(radarState))status.textContent='DWD-Radar teilweise geladen';
+  else status.textContent='DWD-Radar wird geladen · '+(radarState||'Verbindung wird aufgebaut');
+ }
 }
 function updateRadarMetadata(offset){
  const validTimestamp=radarBaseTime+offset*60000;
