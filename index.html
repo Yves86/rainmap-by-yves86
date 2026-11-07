@@ -56,6 +56,38 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;he
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
 .leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(1.28) contrast(.82) saturate(.32)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(5.5) hue-rotate(184deg) brightness(1.18) contrast(1.06) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter;transition:opacity .35s ease}
+
+/* RainMap refresh – UI außerhalb der eigentlichen Radarkarte */
+:root{--panel2:#0b192a;--glow:rgba(87,216,245,.14)}
+body{background:radial-gradient(ellipse at 50% -18%,#17304a 0%,#0a1727 38%,var(--bg) 75%)}
+header{padding:22px 18px 16px}
+.brand{font-size:25px;letter-spacing:-.5px;text-shadow:0 0 22px rgba(87,216,245,.12)}
+.sub{letter-spacing:2px}
+.panel{background:linear-gradient(155deg,rgba(18,34,53,.98),rgba(12,26,42,.98));border-color:rgba(117,153,187,.2);box-shadow:0 12px 34px rgba(0,0,0,.18)}
+.radius-row{padding-top:4px}
+.radius-title{letter-spacing:1.1px}
+.radius-buttons button{border-radius:15px;transition:transform .18s ease,background .18s ease,border-color .18s ease}
+.radius-buttons button:active,.secondary:active{transform:scale(.97)}
+.data-summary,.analysis-card{background:linear-gradient(145deg,#0b1a2b,#0a1726);border-color:#29415a;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.analysis-value{border:1px solid rgba(116,153,190,.07);background:linear-gradient(145deg,#14263b,#102034)}
+.secondary{border-radius:15px;transition:transform .18s ease,border-color .18s ease}
+.cockpit-card{margin:14px 0;padding:15px;border:1px solid rgba(87,216,245,.23);border-radius:19px;background:linear-gradient(125deg,rgba(20,48,70,.96),rgba(10,25,42,.98) 72%);box-shadow:0 10px 28px rgba(0,0,0,.18),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden;position:relative}
+.cockpit-card:before{content:"";position:absolute;width:150px;height:150px;right:-72px;top:-82px;border-radius:50%;background:rgba(87,216,245,.09);filter:blur(2px);pointer-events:none}
+.cockpit-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative}
+.cockpit-kicker{font-size:10px;letter-spacing:1.8px;color:#8eaec8;font-weight:750}
+.cockpit-title{font-size:17px;font-weight:750;margin-top:3px}
+.cockpit-focus{border:1px solid rgba(87,216,245,.34);background:rgba(87,216,245,.1);color:#bcefff;border-radius:12px;padding:9px 11px;font:600 12px system-ui;white-space:nowrap}
+.cockpit-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:13px;position:relative}
+.cockpit-stat{min-width:0;padding:11px 12px;border-radius:14px;background:rgba(4,16,29,.48);border:1px solid rgba(130,166,200,.09)}
+.cockpit-label{font-size:10px;letter-spacing:1.1px;color:#8fa7bf;font-weight:700}
+.cockpit-value{display:block;font-size:15px;font-weight:750;color:#eef7ff;margin-top:5px;line-height:1.3;overflow-wrap:anywhere}
+.cockpit-sub{font-size:11px;color:#93a9c0;margin-top:4px;display:block}
+.cockpit-meter{height:5px;background:#26394e;border-radius:9px;overflow:hidden;margin-top:9px}
+.cockpit-meter span{display:block;height:100%;width:0;background:linear-gradient(90deg,#57d8f5,#b6efff);border-radius:9px;transition:width .35s ease}
+.cockpit-live{display:flex;align-items:center;gap:7px;color:#9ab2c8;font-size:11px;margin-top:12px;position:relative}
+.cockpit-live i{width:7px;height:7px;border-radius:50%;background:#69e0b4;box-shadow:0 0 0 4px rgba(105,224,180,.1);animation:radarPulse 1.8s infinite}
+@keyframes radarPulse{50%{box-shadow:0 0 0 7px rgba(105,224,180,0)}}
+@media(max-width:390px){.cockpit-card{padding:12px}.cockpit-grid{gap:7px}.cockpit-stat{padding:9px}.cockpit-title{font-size:15px}.cockpit-focus{padding:8px 9px;font-size:11px}}
 </style>
 </head>
 <body>
@@ -67,6 +99,16 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
  <section class="panel">
   <div class="mapwrap"><div id="map"></div></div>
   <div class="radius-row"><div class="radius-title">RADAR-UMKREIS · <strong id="radiusLabel">20 km</strong></div><div class="radius-buttons" role="group" aria-label="Radar-Umkreis"><button type="button" data-radius="5" aria-pressed="false">5 km</button><button type="button" data-radius="10" aria-pressed="false">10 km</button><button type="button" data-radius="20" class="active" aria-pressed="true">20 km</button><button type="button" data-radius="30" aria-pressed="false">30 km</button></div></div>
+  <section class="cockpit-card" aria-label="RainMap Radar-Cockpit">
+   <div class="cockpit-head"><div><div class="cockpit-kicker">RAINMAP COCKPIT</div><div class="cockpit-title">Dein Regen-Überblick</div></div><button class="cockpit-focus" id="focusMap" type="button">◎ Karte zu mir</button></div>
+   <div class="cockpit-grid">
+    <div class="cockpit-stat"><div class="cockpit-label">WETTER AM STANDORT</div><strong class="cockpit-value" id="cockpitRain">Wird geprüft …</strong><span class="cockpit-sub" id="cockpitArrival">Nowcast wird ausgewertet</span></div>
+    <div class="cockpit-stat"><div class="cockpit-label">DATENFRISCHE</div><strong class="cockpit-value" id="cockpitAge">Wird geladen</strong><div class="cockpit-meter"><span id="cockpitFreshBar"></span></div></div>
+    <div class="cockpit-stat"><div class="cockpit-label">DEIN SUCHRADIUS</div><strong class="cockpit-value" id="cockpitRadius">20 km</strong><span class="cockpit-sub">um deinen GPS-Punkt</span></div>
+    <div class="cockpit-stat"><div class="cockpit-label">PROGNOSEBLICK</div><strong class="cockpit-value">+120 Min.</strong><span class="cockpit-sub">DWD-RADVOR-Nowcast</span></div>
+   </div>
+   <div class="cockpit-live"><i></i><span id="cockpitStatus">Radar-Cockpit bereit · warte auf DWD-Daten</span></div>
+  </section>
   <div class="data-summary" aria-live="polite">
    <div class="data-summary-head"><span>DWD-RADARDATEN</span><div class="data-actions"><strong class="data-state" id="dataState">Wird geladen …</strong><button class="refresh" id="refreshRadar" type="button" aria-label="Radardaten aktualisieren">↻</button></div></div>
    <div class="data-grid"><div class="data-cell"><span>Letzte Analyse · Datenalter</span><strong id="analysisTime">–</strong></div><div class="data-cell"><span>Ausgewählter Zeitpunkt</span><strong id="validTime">–</strong></div></div>
@@ -120,6 +162,7 @@ function setRadius(km){
  selectedRadius=km;coverageRadius=km*1000;
  try{localStorage.setItem('rainmap-radius',String(km));}catch(e){}
  radiusLabel.textContent=km+' km';
+ refreshCockpit();
  document.querySelectorAll('[data-radius]').forEach(button=>{
   const active=Number(button.dataset.radius)===km;
   button.classList.toggle('active',active);
@@ -171,11 +214,35 @@ function setRadarStatus(message,type='ok'){
  dataState.className='data-state'+(type==='warn'?' warn':type==='error'?' error':'');
  dataState.textContent=message;
 }
+function refreshCockpit(){
+ const ageText=analysisTime.textContent||'';
+ const match=ageText.match(/vor\\s+(\\d+)\\s+Min/i);
+ const age=match?Number(match[1]):null;
+ const rainText=(document.getElementById('localRain')?.textContent||'').trim();
+ const arrivalText=(document.getElementById('rainArrival')?.textContent||'').trim();
+ const rain=document.getElementById('cockpitRain');
+ const arrival=document.getElementById('cockpitArrival');
+ const ageNode=document.getElementById('cockpitAge');
+ const bar=document.getElementById('cockpitFreshBar');
+ const radius=document.getElementById('cockpitRadius');
+ const status=document.getElementById('cockpitStatus');
+ if(rain){
+  if(/kein regen/i.test(rainText)){rain.textContent='Aktuell trocken';}
+  else if(/regen/i.test(rainText)&&!/wird geprüft/i.test(rainText)){rain.textContent='Regen erkannt';}
+  else rain.textContent='Wird geprüft …';
+ }
+ if(arrival)arrival.textContent=arrivalText&& !/wird berechnet/i.test(arrivalText)?arrivalText:'Nowcast wird ausgewertet';
+ if(ageNode)ageNode.textContent=age===null?'Wird geladen':age===0?'Gerade aktualisiert':'vor '+age+' Min.';
+ if(bar)bar.style.width=age===null?'0%':Math.max(5,Math.min(100,100-age*6))+'%';
+ if(radius)radius.textContent=selectedRadius+' km';
+ if(status)status.textContent=age===null?'Warte auf DWD-Daten':age>15?'Daten könnten veraltet sein':'DWD-Radar verbunden · Aktualisierung '+(age<=2?'sehr frisch':'läuft');
+}
 function updateRadarMetadata(offset){
  const validTimestamp=radarBaseTime+offset*60000;
  const ageMinutes=Math.max(0,Math.round((Date.now()-radarBaseTime)/60000));
  analysisTime.textContent=clockTime(radarBaseTime)+' · vor '+ageMinutes+' Min.';
  validTime.textContent=clockTime(validTimestamp);
+ refreshCockpit();
  if(ageMinutes>15)setRadarStatus('Daten möglicherweise veraltet','warn');
 }
 function showTime(offset){
@@ -339,6 +406,13 @@ const analysisEls={
  run:document.getElementById('runAnalysis'),alerts:document.getElementById('enableAlerts'),
  alertState:document.getElementById('alertState')
 };
+const cockpitObserver=new MutationObserver(refreshCockpit);
+[analysisEls.local,analysisEls.arrival,dataState,analysisTime].forEach(node=>{if(node)cockpitObserver.observe(node,{childList:true,characterData:true,subtree:true});});
+document.getElementById('focusMap').addEventListener('click',()=>{
+ if(gpsReady){map.flyTo(marker.getLatLng(),Math.max(map.getZoom(),11),{duration:0.8});}
+ else{document.getElementById('cockpitStatus').textContent='Standort wird noch gesucht';}
+});
+refreshCockpit();
 let lastAnalysis=null, analysisRunning=false, alertsEnabled=false, lastAlertKey='';
 try{alertsEnabled=localStorage.getItem('rainmap-alerts')==='1';}catch(e){}
 analysisEls.alertState.textContent=alertsEnabled?'Warnungen aktiv (bei geöffneter App)':'Warnungen aus';
