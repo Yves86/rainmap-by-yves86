@@ -605,21 +605,24 @@ async function runRainAnalysis(manual=true){
  if(manual){analysisEls.run.disabled=true;analysisEls.run.textContent='Analysiere …';}
  analysisEls.foot.textContent='DWD-Radarbilder werden geladen und pixelweise ausgewertet. Das kann kurz dauern.';
  try{
-  // Kleine, zeitlich gestaffelte Auswahl statt elf paralleler WMS-Abfragen.
-  const offsets=[-10,0,10,20,30];
-  const frames=[];
+  // Erst die aktuelle Aufnahme prüfen. Bei fehlendem Pixelzugriff keine weiteren WMS-Bilder anfordern.
+  const currentFrame=await waitForRadarFrame(0);
+  if(!currentFrame)throw new Error('Die aktuelle DWD-Radaraufnahme ist nicht verfügbar. Die Kartenebene wird separat weiter geladen.');
+  const currentSnapshot=radarSnapshot(currentFrame);
+  if(currentSnapshot.error)throw new Error(currentSnapshot.message);
+  // Erst nach erfolgreicher Pixelprüfung sparsam weitere Zeitpunkte abrufen.
+  const offsets=[-10,10,20,30];
+  const frames=[currentFrame];
   for(const offset of offsets){
    const frame=await waitForRadarFrame(offset);
    if(frame)frames.push(frame);
-   if(offset===0&&!frame)throw new Error('Der DWD liefert aktuell keine Radarkachel. Bitte später erneut versuchen.');
   }
-  const snapshots=frames.map(radarSnapshot);
+  const snapshots=frames.map(frame=>frame===currentFrame?currentSnapshot:radarSnapshot(frame));
   const bad=snapshots.find(x=>x.error);
   if(bad)throw new Error(bad.message);
   const get=o=>snapshots.find(x=>x.offset===o);
-  if(!get(0))throw new Error('Die aktuelle DWD-Radaraufnahme ist noch nicht verfügbar.');
   const future=snapshots.filter(x=>x.offset>0).sort((a,b)=>a.offset-b.offset);
-  renderAnalysis({snapshots:[get(-10)||get(0),get(0)],future});
+  renderAnalysis({snapshots:[get(-10)||currentSnapshot,currentSnapshot],future});
   lastAnalysis=Date.now();
  }catch(e){
   analysisEls.local.textContent='Analyse nicht verfügbar';
