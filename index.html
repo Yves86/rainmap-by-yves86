@@ -399,6 +399,7 @@ function refreshRadarTimeline(force=false){
  radarFrames.clear();
  radar=null;
  radarBaseTime=nextBase;
+ if(typeof analysisSnapshotCache!=='undefined')analysisSnapshotCache.clear();
  slider.value=0;
  setRadarStatus('Neue DWD-Analyse wird geladen …','warn');
  update();
@@ -510,7 +511,7 @@ function radarSnapshot(offset){
       cells.set(x+','+y,{x,y,lum});
      }
     }
-    if(!cells.size)throw new Error('Das DWD-Bild enthält aktuell keine auswertbaren Niederschlagsflächen.');
+    // Ein vollständig transparentes Bild bedeutet: aktuell kein Niederschlag – das ist ein gültiges Ergebnis.
     const visited=new Set(),components=[];
     for(const [key,cell] of cells){
      if(visited.has(key))continue;
