@@ -23,11 +23,11 @@ main{padding:0 12px 18px;max-width:760px;margin:auto}
 .radius-title{font-size:11px;color:var(--muted);letter-spacing:.7px}
 .radius-buttons{display:flex;gap:6px}
 .radius-buttons button{background:#1b2c41;color:#c7d5e4;border:1px solid #344b65;border-radius:9px;padding:8px 11px;font-size:12px}
-.radius-buttons button.active{background:#173d50;color:#68dcf5;border-color:#348ba0;font-weight:700}
+.radius-buttons button.active{background:#173d50;color:#68dcf5;border-color:#348ba0;font-weight:700}.radius-buttons button:focus-visible,.refresh:focus-visible,.play:focus-visible,button.secondary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 .data-summary{margin-top:14px;background:#0b1828;border:1px solid #243a51;border-radius:13px;padding:12px}
 .data-summary-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11px;letter-spacing:.7px;color:var(--muted)}
 .data-state{font-weight:700;letter-spacing:0;color:#a9eacb}
-.data-state.warn{color:#ffd08a}.data-state.error{color:#ff9a9a}
+.data-state.warn{color:#ffd08a}.data-state.error{color:#ff9a9a}.data-actions{display:flex;align-items:center;gap:9px}.refresh{background:#1b2c41;color:#cfe3f5;border:1px solid #344b65;border-radius:8px;width:30px;height:28px;font-size:18px;line-height:1}.refresh:active{transform:rotate(35deg)}
 .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
 .data-cell{background:#122338;border-radius:9px;padding:10px;min-width:0}
 .data-cell span{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
@@ -40,7 +40,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;he
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(1.28) contrast(.82) saturate(.32)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(5.5) hue-rotate(184deg) brightness(1.18) contrast(1.06) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter}
+.leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(1.28) contrast(.82) saturate(.32)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(5.5) hue-rotate(184deg) brightness(1.18) contrast(1.06) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter;transition:opacity .35s ease}
 </style>
 </head>
 <body>
@@ -51,15 +51,15 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
  </section>
  <section class="panel">
   <div class="mapwrap"><div id="map"></div></div>
-  <div class="radius-row"><div class="radius-title">RADAR-UMKREIS · <strong id="radiusLabel">20 km</strong></div><div class="radius-buttons" role="group" aria-label="Radar-Umkreis"><button type="button" data-radius="5" aria-pressed="false">5 km</button><button type="button" data-radius="10" aria-pressed="false">10 km</button><button type="button" data-radius="20" class="active" aria-pressed="true">20 km</button></div></div>
+  <div class="radius-row"><div class="radius-title">RADAR-UMKREIS · <strong id="radiusLabel">20 km</strong></div><div class="radius-buttons" role="group" aria-label="Radar-Umkreis"><button type="button" data-radius="5" aria-pressed="false">5 km</button><button type="button" data-radius="10" aria-pressed="false">10 km</button><button type="button" data-radius="20" class="active" aria-pressed="true">20 km</button><button type="button" data-radius="30" aria-pressed="false">30 km</button></div></div>
   <div class="data-summary" aria-live="polite">
-   <div class="data-summary-head"><span>DWD-RADARDATEN</span><strong class="data-state" id="dataState">Wird geladen …</strong></div>
+   <div class="data-summary-head"><span>DWD-RADARDATEN</span><div class="data-actions"><strong class="data-state" id="dataState">Wird geladen …</strong><button class="refresh" id="refreshRadar" type="button" aria-label="Radardaten aktualisieren">↻</button></div></div>
    <div class="data-grid"><div class="data-cell"><span>Letzte Analyse · Datenalter</span><strong id="analysisTime">–</strong></div><div class="data-cell"><span>Ausgewählter Zeitpunkt</span><strong id="validTime">–</strong></div></div>
    <p class="data-detail" id="dataDetail">Die aktuelle DWD-Radarkachel wird abgerufen.</p>
   </div>
-  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><button class="secondary" id="now">⟲ Letzte Messung</button></div>
+  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><div style="display:flex;gap:6px"><button class="secondary" id="now">⟲ Jetzt</button></div></div>
   <div class="controls"><button class="play" id="play" type="button" aria-label="Animation starten" aria-pressed="false">▶</button><input id="slider" type="range" min="-30" max="120" step="5" value="0" aria-label="Radarzeitpunkt"></div>
-  <div class="time"><span>−30 Min.</span><span>0 Min.</span><span>+120 Min.</span></div>
+  <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+120 Min.</span></div>
   <div class="small" style="margin-top:10px">NIEDERSCHLAGSINTENSITÄT · qualitative Radarfarben</div>
   <div class="legend"><span><i class="dot" style="background:#f2fbff;border:1px solid #b8d8ed"></i>leichter Regen</span><span><i class="dot" style="background:#78c5ff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
 
@@ -71,6 +71,7 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
 const fallback=[51.85,11.58];
 const map=L.map('map',{zoomControl:false}).setView(fallback,8);
 L.control.zoom({position:'bottomright'}).addTo(map);
+L.control.scale({position:'bottomleft',metric:true,imperial:false,maxWidth:90}).addTo(map);
 // Deutscher, API-schlüsselfreier OpenStreetMap-Kachelserver. Eigene URL umgeht alte CARTO-Kacheln aus dem Browsercache.
 const baseMap=L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png?rainmap=20261107',{
  maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende',className:'dark-basemap',crossOrigin:true
@@ -90,6 +91,7 @@ function updateCoverage(pt,fit=false){
 }
 function setRadius(km){
  selectedRadius=km;coverageRadius=km*1000;
+ try{localStorage.setItem('rainmap-radius',String(km));}catch(e){}
  radiusLabel.textContent=km+' km';
  document.querySelectorAll('[data-radius]').forEach(button=>{
   const active=Number(button.dataset.radius)===km;
@@ -99,7 +101,9 @@ function setRadius(km){
  if(gpsReady)updateCoverage(marker.getLatLng(),true);
 }
 document.querySelectorAll('[data-radius]').forEach(button=>button.addEventListener('click',()=>setRadius(Number(button.dataset.radius))));
-setRadius(20);
+let savedRadius=20;
+try{const stored=Number(localStorage.getItem('rainmap-radius'));if([5,10,20,30].includes(stored))savedRadius=stored;}catch(e){}
+setRadius(savedRadius);
 const placeName=document.getElementById('placeName'), placeDetail=document.getElementById('placeDetail'), gpsBadge=document.getElementById('gpsBadge');
 function applyPosition(position, centerMap=false){
  const lat=position.coords.latitude, lon=position.coords.longitude, accuracy=Math.round(position.coords.accuracy);
@@ -171,7 +175,7 @@ function createRadarFrame(offset){
    if(Number(slider.value)===offset)setRadarStatus('DWD-Radar nicht erreichbar','error');
    if(playbackWait===offset){
     playbackWait=null;
-    if(playing)playbackTimer=setTimeout(playNextFrame,700);
+    if(playing)playbackTimer=setTimeout(playNextFrame,500);
    }
    return;
   }
@@ -188,7 +192,7 @@ function createRadarFrame(offset){
    playbackWait=null;
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
-   if(playing)playbackTimer=setTimeout(playNextFrame,700);
+   if(playing)playbackTimer=setTimeout(playNextFrame,500);
   }else if(Number(slider.value)===offset){
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
@@ -208,18 +212,18 @@ function displayRadarFrame(offset){
  return true;
 }
 function pruneRadarCache(keepOffset){
- if(radarFrames.size<=7)return;
+ if(radarFrames.size<=10)return;
  const candidates=[...radarFrames.values()]
   .filter(frame=>frame.offset!==keepOffset&&frame.layer!==radar)
   .sort((a,b)=>a.lastUsed-b.lastUsed);
- while(radarFrames.size>7&&candidates.length){
+ while(radarFrames.size>10&&candidates.length){
   const old=candidates.shift();
   map.removeLayer(old.layer);
   radarFrames.delete(old.offset);
  }
 }
 function preloadRadarFrames(offset){
- [5,10].forEach(step=>{
+ [5,10,15].forEach(step=>{
   const target=offset+step;
   if(target>=-30&&target<=120&&!radarFrames.has(target))createRadarFrame(target);
  });
@@ -245,9 +249,9 @@ function update(){
 slider.addEventListener('input',update);
 document.getElementById('now').onclick=()=>{slider.value=0;update()};
 // Beim geöffneten Tab die Zeitbasis regelmäßig erneuern, damit die Prognose nicht veraltet.
-function refreshRadarTimeline(){
+function refreshRadarTimeline(force=false){
  const nextBase=Math.floor(Date.now()/300000)*300000-300000;
- if(nextBase===radarBaseTime)return;
+ if(nextBase===radarBaseTime&&!force)return;
  stopPlayback();
  for(const frame of radarFrames.values())map.removeLayer(frame.layer);
  radarFrames.clear();
@@ -257,7 +261,11 @@ function refreshRadarTimeline(){
  setRadarStatus('Neue DWD-Analyse wird geladen …','warn');
  update();
 }
-setInterval(refreshRadarTimeline,60000);
+setInterval(()=>refreshRadarTimeline(false),60000);
+document.getElementById('refreshRadar').onclick=()=>{
+ setRadarStatus('DWD-Radar wird aktualisiert …','warn');
+ refreshRadarTimeline(true);
+};
 function stopPlayback(){
  playing=false;
  playbackWait=null;
