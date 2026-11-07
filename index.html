@@ -59,9 +59,9 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
 </style>
 </head>
 <body>
-<header><div><div class="brand">🌧️ Rain<span>Map</span></div><div class="sub">BY YVES86 · REGENRADAR</div></div><div class="status" id="gpsBadge">● GPS wartet</div></header>
+<header><div><div class="brand">🌧️ Rain<span>Map</span></div><div class="sub">BY YVES86 · REGENRADAR</div></div><div class="status" id="gpsBadge" hidden style="display:none!important">● GPS wartet</div></header>
 <main>
- <section class="panel gps-location-panel" aria-hidden="true">
+ <section class="panel gps-location-panel" aria-hidden="true" hidden style="display:none!important">
   <div class="place"><div><div class="small">DEIN RADARSTANDORT</div><strong id="placeName">Standort wird ermittelt …</strong><div class="small" id="placeDetail">GPS wird angefragt</div></div><button class="secondary" id="locate">◎ Mein Standort</button></div>
  </section>
  <section class="panel">
