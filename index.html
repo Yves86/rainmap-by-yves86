@@ -145,7 +145,7 @@ function updateRadarMetadata(offset){
  const ageMinutes=Math.max(0,Math.round((Date.now()-radarBaseTime)/60000));
  analysisTime.textContent=clockTime(radarBaseTime);
  validTime.textContent=clockTime(validTimestamp);
- radarAgeBadge.textContent='Datenstand '+clockTime(radarBaseTime).replace(' Uhr','');
+ radarAgeBadge.textContent='DWD '+clockTime(radarBaseTime).replace(' Uhr','')+' · '+ageMinutes+' Min.';
  if(ageMinutes>15){
   radarAgeBadge.style.color='#ffd08a';
   setRadarStatus('Daten möglicherweise veraltet','warn');
@@ -183,6 +183,7 @@ function createRadarFrame(offset){
   frame.ready=true;
   if(Number(slider.value)===offset){
    if(frame.failedTiles>0)setRadarStatus('Teilweise geladen','warn');
+   else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
    else setRadarStatus('Radarbild geladen','ok');
    dataDetail.textContent=frame.failedTiles>0?
     'Ein Teil der DWD-Radarkacheln konnte nicht geladen werden. Die Anzeige kann örtlich unvollständig sein.':
@@ -231,7 +232,12 @@ function preloadRadarFrames(offset){
 function requestRadar(offset){
  const frame=createRadarFrame(offset);
  frame.lastUsed=Date.now();
- if(frame.ready)displayRadarFrame(offset);
+ if(frame.ready){
+  displayRadarFrame(offset);
+  if(frame.failedTiles>0)setRadarStatus('Teilweise geladen','warn');
+  else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
+  else setRadarStatus('Radarbild geladen','ok');
+ }
  preloadRadarFrames(offset);
 }
 function update(){
@@ -273,8 +279,11 @@ function playNextFrame(){
  frame.lastUsed=Date.now();
  if(frame.ready){
   displayRadarFrame(value);
+  if(frame.failedTiles>0)setRadarStatus('Teilweise geladen','warn');
+  else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
+  else setRadarStatus('Radarbild geladen','ok');
   preloadRadarFrames(value);
-  playbackTimer=setTimeout(playNextFrame,500);
+  playbackTimer=setTimeout(playNextFrame,700);
  }else{
   playbackWait=value;
   preloadRadarFrames(value);
@@ -284,7 +293,7 @@ play.onclick=()=>{
  if(playing){stopPlayback();return;}
  playing=true;
  play.textContent='Ⅱ';
- if(Number(slider.value)>=90)slider.value=-30;
+ if(Number(slider.value)>=120)slider.value=-30;
  playNextFrame();
 };
 createRadarFrame(0);
