@@ -278,10 +278,17 @@ function createRadarFrame(offset){
    if(Number(slider.value)===offset){
     displayRadarFrame(offset);
     setRadarStatus('Radarbild wird vervollständigt …','warn');
+    dataDetail.textContent='Erste DWD-Radarkacheln sind eingetroffen. Weitere Kacheln werden ergänzt.';
+    refreshCockpit();
    }
   }
  });
- layer.on('tileerror',()=>{frame.failedTiles++;});
+ layer.on('tileerror',()=>{
+  frame.failedTiles++;
+  if(Number(slider.value)===offset&&frame.successfulTiles===0){
+   setRadarStatus('DWD-Radarkacheln werden erneut versucht …','warn');
+  }
+ });
  frame.timeoutId=setTimeout(()=>{
   if(frame.loading&&!frame.ready){
    frame.loading=false;
@@ -295,7 +302,11 @@ function createRadarFrame(offset){
   if(frame.successfulTiles===0){
    map.removeLayer(layer);
    radarFrames.delete(offset);
-   if(Number(slider.value)===offset)setRadarStatus('DWD-Radar nicht erreichbar','error');
+   if(Number(slider.value)===offset){
+    setRadarStatus('DWD-Radar nicht erreichbar','error');
+    dataDetail.textContent='Der DWD hat für diesen Zeitpunkt keine Radarkacheln geliefert. Bitte später erneut aktualisieren.';
+   }
+   refreshCockpit();
    if(playbackWait===offset){
     playbackWait=null;
     if(playing)playbackTimer=setTimeout(playNextFrame,500);
@@ -320,6 +331,8 @@ function createRadarFrame(offset){
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
   }
+  refreshCockpit();
+  if(offset===0&&gpsReady&&lastAnalysis===null&&typeof runRainAnalysis==='function')runRainAnalysis(false);
  });
  layer.addTo(map);
  return frame;
