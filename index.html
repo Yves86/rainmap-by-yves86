@@ -88,6 +88,50 @@ header{padding:22px 18px 16px}
 .cockpit-live i{width:7px;height:7px;border-radius:50%;background:#69e0b4;box-shadow:0 0 0 4px rgba(105,224,180,.1);animation:radarPulse 1.8s infinite}
 @keyframes radarPulse{50%{box-shadow:0 0 0 7px rgba(105,224,180,0)}}
 @media(max-width:390px){.cockpit-card{padding:12px}.cockpit-grid{gap:7px}.cockpit-stat{padding:9px}.cockpit-title{font-size:15px}.cockpit-focus{padding:8px 9px;font-size:11px}}
+
+/* RainMap motion polish – bewusst nur UI-Elemente, niemals die Radarkarte */
+.cockpit-card{isolation:isolate}
+.cockpit-card:after{
+ content:"";position:absolute;z-index:0;pointer-events:none;
+ top:-35%;bottom:-35%;left:-42%;width:28%;
+ background:linear-gradient(90deg,transparent,rgba(154,235,255,.10),rgba(255,255,255,.20),rgba(154,235,255,.08),transparent);
+ transform:skewX(-18deg);animation:cockpitSweep 8.5s ease-in-out infinite;
+}
+.cockpit-card:before{animation:cockpitHalo 7s ease-in-out infinite alternate}
+.cockpit-head,.cockpit-grid,.cockpit-live{z-index:1}
+.cockpit-stat{animation:statAppear .65s both;transition:transform .25s ease,border-color .25s ease,box-shadow .25s ease}
+.cockpit-stat:nth-child(2){animation-delay:.08s}
+.cockpit-stat:nth-child(3){animation-delay:.16s}
+.cockpit-stat:nth-child(4){animation-delay:.24s}
+.cockpit-stat:active{transform:scale(.985)}
+.cockpit-live i{animation:radarPulse 1.8s ease-out infinite,liveGlow 2.8s ease-in-out infinite}
+.brand{animation:brandGlow 5s ease-in-out infinite}
+@keyframes cockpitSweep{
+ 0%,12%{left:-42%;opacity:0}
+ 22%{opacity:.85}
+ 58%{left:115%;opacity:.65}
+ 68%,100%{left:115%;opacity:0}
+}
+@keyframes cockpitHalo{
+ from{transform:translate3d(0,0,0) scale(.88);opacity:.65}
+ to{transform:translate3d(-20px,18px,0) scale(1.18);opacity:1}
+}
+@keyframes statAppear{
+ from{opacity:0;transform:translateY(8px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@keyframes liveGlow{
+ 0%,100%{background:#69e0b4;box-shadow:0 0 0 4px rgba(105,224,180,.10),0 0 8px rgba(105,224,180,.12)}
+ 50%{background:#9af2d2;box-shadow:0 0 0 6px rgba(105,224,180,.04),0 0 16px rgba(105,224,180,.38)}
+}
+@keyframes brandGlow{
+ 0%,100%{text-shadow:0 0 14px rgba(87,216,245,.08)}
+ 50%{text-shadow:0 0 24px rgba(87,216,245,.25)}
+}
+@media(prefers-reduced-motion:reduce){
+ .cockpit-card:after,.cockpit-card:before,.cockpit-stat,.cockpit-live i,.brand{animation:none!important;transition:none!important}
+}
+
 </style>
 </head>
 <body>
