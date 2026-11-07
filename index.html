@@ -33,6 +33,17 @@ main{padding:0 12px 18px;max-width:760px;margin:auto}
 .data-cell span{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
 .data-cell strong{font-size:14px;font-weight:700}
 .data-detail{font-size:11px;color:var(--muted);line-height:1.45;margin:10px 0 0}
+.analysis-card{margin-top:14px;padding:12px;border:1px solid #29445d;border-radius:13px;background:#0b1828}
+.analysis-head{display:flex;justify-content:space-between;align-items:center;gap:8px}.analysis-head>div>strong{display:block;font-size:15px;margin-top:2px}
+.analysis-head button,.analysis-actions button{font-size:11px;padding:7px 9px}
+.analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.analysis-value{min-width:0;padding:9px;background:#122338;border-radius:9px}
+.analysis-value span{display:block;color:var(--muted);font-size:10px;margin-bottom:4px}
+.analysis-value strong{font-size:13px;overflow-wrap:anywhere}
+.analysis-detail{font-size:11px;color:#c2d2e2;line-height:1.45;margin-top:10px}
+.analysis-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:10px}
+.analysis-foot{font-size:10px;color:var(--muted);line-height:1.4;margin-top:8px}
+@media(max-width:390px){.analysis-head{align-items:flex-start;flex-direction:column}.analysis-grid{grid-template-columns:1fr 1fr}}
 .forecast-note{font-size:11px;color:var(--muted);line-height:1.45;margin:11px 0 0}
 @media(max-width:390px){.data-grid{grid-template-columns:1fr 1fr}.radius-row{align-items:flex-start;flex-direction:column}.radius-buttons{width:100%}.radius-buttons button{flex:1}.data-summary-head{align-items:flex-start;flex-direction:column;gap:5px}}
 .controls{display:flex;align-items:center;gap:10px;margin-top:13px}.play{flex:0 0 48px;width:48px;height:44px;padding:0;background:var(--cyan);color:#06121d;border:0;border-radius:12px;font-weight:800;font-size:15px}
@@ -57,6 +68,18 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
    <div class="data-grid"><div class="data-cell"><span>Letzte Analyse · Datenalter</span><strong id="analysisTime">–</strong></div><div class="data-cell"><span>Ausgewählter Zeitpunkt</span><strong id="validTime">–</strong></div></div>
    <p class="data-detail" id="dataDetail">Die aktuelle DWD-Radarkachel wird abgerufen.</p>
   </div>
+  <section class="analysis-card" aria-live="polite">
+   <div class="analysis-head"><div><div class="small">PERSÖNLICHE REGENANALYSE</div><strong>Regen an deinem Standort</strong></div><button class="secondary" id="runAnalysis" type="button">↻ Analysieren</button></div>
+   <div class="analysis-grid">
+    <div class="analysis-value"><span>Aktuelle Lage</span><strong id="localRain">Wird geprüft …</strong></div>
+    <div class="analysis-value"><span>Nächster Regen</span><strong id="rainArrival">Wird berechnet …</strong></div>
+    <div class="analysis-value"><span>Voraussichtliches Ende</span><strong id="rainEnd">–</strong></div>
+    <div class="analysis-value"><span>Stärkste Radarfläche</span><strong id="strongestCell">–</strong></div>
+   </div>
+   <div class="analysis-detail" id="movementDetail">Zugrichtung und Geschwindigkeit werden aus aufeinanderfolgenden Radaraufnahmen ermittelt.</div>
+   <div class="analysis-actions"><button class="secondary" id="enableAlerts" type="button">♧ Regenwarnungen aktivieren</button><span class="small" id="alertState">Warnungen aus</span></div>
+   <div class="analysis-foot" id="analysisFoot">Die Analyse nutzt DWD-RADVOR-Rasterbilder. Es werden keine mm/h-Werte aus der Kartenfarbe erfunden.</div>
+  </section>
   <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><div style="display:flex;gap:6px"><button class="secondary" id="now">⟲ Jetzt</button></div></div>
   <div class="controls"><button class="play" id="play" type="button" aria-label="Animation starten" aria-pressed="false">▶</button><input id="slider" type="range" min="-30" max="120" step="5" value="0" aria-label="Radarzeitpunkt"></div>
   <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+120 Min.</span></div>
@@ -161,7 +184,7 @@ function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
  if(frame)return frame;
  const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
-  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
+  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar',crossOrigin:'anonymous'
  });
  frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0};
  radarFrames.set(offset,frame);
@@ -303,6 +326,189 @@ play.onclick=()=>{
  if(Number(slider.value)>=120)slider.value=-30;
  playNextFrame();
 };
+
+const analysisEls={
+ local:document.getElementById('localRain'),arrival:document.getElementById('rainArrival'),
+ end:document.getElementById('rainEnd'),strongest:document.getElementById('strongestCell'),
+ movement:document.getElementById('movementDetail'),foot:document.getElementById('analysisFoot'),
+ run:document.getElementById('runAnalysis'),alerts:document.getElementById('enableAlerts'),
+ alertState:document.getElementById('alertState')
+};
+let lastAnalysis=null, alertsEnabled=false, lastAlertKey='';
+try{alertsEnabled=localStorage.getItem('rainmap-alerts')==='1';}catch(e){}
+analysisEls.alertState.textContent=alertsEnabled?'Warnungen aktiv (bei geöffneter App)':'Warnungen aus';
+analysisEls.alerts.textContent=alertsEnabled?'✓ Warnungen aktiviert':'♧ Regenwarnungen aktivieren';
+
+function waitForRadarFrame(offset){
+ const frame=createRadarFrame(offset);
+ if(frame.ready)return Promise.resolve(frame);
+ return new Promise(resolve=>{
+  let settled=false;
+  const finish=value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value);};
+  const timer=setTimeout(()=>finish(null),18000);
+  frame.layer.once('load',()=>finish(frame.ready?frame:null));
+ });
+}
+function radarSnapshot(frame){
+ const layer=frame.layer, tiles=layer._tiles||{}, step=4, side=64, cells=new Map();
+ let zoom=map.getZoom(), tileCount=0;
+ try{
+  for(const tileKey in tiles){
+   const tile=tiles[tileKey], img=tile.el, c=tile.coords;
+   if(!tile.current||!img||!img.complete||!img.naturalWidth||!c)continue;
+   const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
+   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+   const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;tileCount++;
+   for(let py=0;py<canvas.height;py+=step){
+    for(let px=0;px<canvas.width;px+=step){
+     const i=(py*canvas.width+px)*4, alpha=data[i+3];
+     if(alpha<45)continue;
+     const rr=data[i],gg=data[i+1],bb=data[i+2];
+     const lum=.299*rr+.587*gg+.114*bb;
+     const key=(c.x*side+Math.floor(px/step))+','+(c.y*side+Math.floor(py/step));
+     cells.set(key,{x:c.x*side+Math.floor(px/step),y:c.y*side+Math.floor(py/step),lum:lum});
+    }
+   }
+  }
+ }catch(e){return {error:'CORS',message:'Der Browser erlaubt keinen Pixelzugriff auf die DWD-Rasterkacheln. Die Kartenanzeige funktioniert weiterhin, die automatische Zellenauswertung ist hier aber nicht freigegeben.'};}
+ if(!tileCount)return {error:'EMPTY',message:'Noch keine auswertbaren DWD-Radarkacheln im sichtbaren Kartenausschnitt.'};
+ const visited=new Set(), components=[];
+ for(const [key,cell] of cells){
+  if(visited.has(key))continue;
+  const stack=[cell], group=[];visited.add(key);
+  while(stack.length){
+   const p=stack.pop();group.push(p);
+   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+    if(!dx&&!dy)continue;
+    const nk=(p.x+dx)+','+(p.y+dy);
+    if(!visited.has(nk)&&cells.has(nk)){visited.add(nk);stack.push(cells.get(nk));}
+   }
+  }
+  if(group.length<3)continue;
+  let sx=0,sy=0,sl=0,minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const p of group){sx+=p.x;sy+=p.y;sl+=p.lum;minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
+  const gx=sx/group.length,gy=sy/group.length;
+  components.push({x:gx,y:gy,latlng:map.unproject([gx*step,gy*step],zoom),count:group.length,avgLum:sl/group.length,bounds:{minX,maxX,minY,maxY}});
+ }
+ return {offset:frame.offset,zoom,step,cells,components,tileCount};
+}
+function pointHasRain(snapshot,latlng){
+ if(!snapshot||snapshot.error)return null;
+ const p=map.project(latlng,snapshot.zoom),gx=Math.floor(p.x/snapshot.step),gy=Math.floor(p.y/snapshot.step);
+ for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if(snapshot.cells.has((gx+dx)+','+(gy+dy)))return snapshot.cells.get((gx+dx)+','+(gy+dy));
+ return false;
+}
+function bearingBetween(a,b){
+ const rad=Math.PI/180,lat1=a.lat*rad,lat2=b.lat*rad,dlon=(b.lng-a.lng)*rad;
+ const y=Math.sin(dlon)*Math.cos(lat2);
+ const x=Math.cos(lat1)*Math.sin(lat2)-Math.sin(lat1)*Math.cos(lat2)*Math.cos(dlon);
+ return (Math.atan2(y,x)/rad+360)%360;
+}
+function bearingText(deg){
+ const names=['N','NO','O','SO','S','SW','W','NW'];
+ return names[Math.round(deg/45)%8];
+}
+function analyzeMovement(oldSnap,newSnap){
+ if(!oldSnap||!newSnap||oldSnap.error||newSnap.error)return null;
+ const minutes=Math.abs(newSnap.offset-oldSnap.offset);
+ if(!minutes)return null;
+ const matches=[];
+ for(const now of newSnap.components){
+  let nearest=null,dist=Infinity;
+  for(const before of oldSnap.components){
+   const d=map.distance(before.latlng,now.latlng)/1000;
+   if(d<dist){dist=d;nearest=before;}
+  }
+  if(nearest&&dist<=35){
+   const kmh=dist/(minutes/60),bearing=bearingBetween(nearest.latlng,now.latlng);
+   if(kmh>=2&&kmh<=120)matches.push({component:now,kmh,bearing,dist});
+  }
+ }
+ if(!matches.length)return null;
+ matches.sort((a,b)=>b.component.count-a.component.count);
+ return matches[0];
+}
+function fmtEta(mins){if(mins<=0)return 'jetzt';if(mins<60)return 'in ca. '+Math.round(mins/5)*5+' Min.';return 'in ca. '+Math.floor(mins/60)+' Std. '+(Math.round(mins%60/5)*5)+' Min.';}
+function notifyRain(key,title,body){
+ if(!alertsEnabled||!('Notification'in window)||Notification.permission!=='granted'||key===lastAlertKey)return;
+ lastAlertKey=key;
+ try{new Notification(title,{body,icon:'./icon.svg',tag:'rainmap-rain-alert'});}catch(e){}
+}
+function renderAnalysis(result){
+ const current=result.snapshots[0], user=marker.getLatLng(), local=pointHasRain(current,user);
+ analysisEls.local.textContent=local?'Regen am Standort erkannt':'Am Standort derzeit kein Regen erkannt';
+ const future=result.future;
+ let firstWet=null,lastWet=null,seenWet=false,ended=false;
+ for(const snap of future){
+  const wet=pointHasRain(snap,user);
+  if(wet===null)continue;
+  if(wet){if(firstWet===null)firstWet=snap.offset;lastWet=snap.offset;seenWet=true;}
+  else if(seenWet&&!ended){ended=true;}
+ }
+ if(local){
+  analysisEls.arrival.textContent='Bereits Regen';
+  analysisEls.end.textContent=lastWet!==null&&ended?'voraussichtlich bis +'+lastWet+' Min.':'im 2-h-Fenster noch nicht sicher';
+ }else if(firstWet!==null){
+  analysisEls.arrival.textContent=fmtEta(firstWet);
+  analysisEls.end.textContent=ended?'voraussichtlich um '+clockTime(radarBaseTime+lastWet*60000):'im 2-h-Fenster nicht absehbar';
+  notifyRain('arrival-'+radarBaseTime+'-'+firstWet,'RainMap: Regen nähert sich','DWD-RADVOR zeigt Niederschlag an deinem Standort '+fmtEta(firstWet)+'.');
+ }else{
+  analysisEls.arrival.textContent='Kein Regen im Nowcast';
+  analysisEls.end.textContent='–';
+ }
+ const currentComponents=current.components||[];
+ if(currentComponents.length){
+  const strongest=currentComponents.slice().sort((a,b)=>b.count-a.count)[0];
+  const km=map.distance(user,strongest.latlng)/1000;
+  analysisEls.strongest.textContent='Größte Fläche · '+km.toFixed(1)+' km entfernt';
+ }else analysisEls.strongest.textContent='Keine Regenfläche erkannt';
+ const movement=analyzeMovement(result.snapshots[0],result.snapshots[1]);
+ if(movement){
+  analysisEls.movement.textContent='Bewegung der größten verfolgbaren Zelle: '+bearingText(movement.bearing)+' · ca. '+Math.round(movement.kmh)+' km/h. Richtung und Tempo aus zwei Radaraufnahmen; lokale Ankunft wird vorrangig aus RADVOR abgelesen.';
+ }else analysisEls.movement.textContent='Für eine sichere Zugrichtung fehlen aktuell passende Regenzellen in beiden Vergleichsaufnahmen.';
+ analysisEls.foot.textContent='Auswertung aus DWD-RADVOR-Bildern im sichtbaren Kartenausschnitt. Ankunft und Ende sind Nowcast-Schätzungen in 5- bis 15-Minuten-Schritten, keine garantierten Messwerte.';
+ const largest=currentComponents.length?currentComponents.reduce((a,b)=>a.count>b.count?a:b):null;
+ if(largest&&largest.count>20){
+  const dist=map.distance(user,largest.latlng)/1000;
+  if(dist<=selectedRadius&&movement)notifyRain('near-'+radarBaseTime,'RainMap: Regengebiet in der Nähe','Eine größere Regenfläche liegt etwa '+Math.round(dist)+' km entfernt und zieht '+bearingText(movement.bearing)+'.');
+ }
+}
+async function runRainAnalysis(manual=true){
+ if(!gpsReady){analysisEls.local.textContent='GPS-Standort fehlt';analysisEls.foot.textContent='Bitte zuerst den Standort freigeben, damit die lokale Regenanalyse möglich ist.';return;}
+ if(manual){analysisEls.run.disabled=true;analysisEls.run.textContent='Analysiere …';}
+ analysisEls.foot.textContent='DWD-Radarbilder werden geladen und pixelweise ausgewertet. Das kann kurz dauern.';
+ try{
+  const offsets=[-10,0,5,10,15,20,30,45,60,90,120];
+  const frames=await Promise.all(offsets.map(waitForRadarFrame));
+  const snapshots=frames.filter(Boolean).map(radarSnapshot);
+  const bad=snapshots.find(x=>x.error);
+  if(bad)throw new Error(bad.message);
+  const get=o=>snapshots.find(x=>x.offset===o);
+  if(!get(0))throw new Error('Die aktuelle DWD-Radaraufnahme ist noch nicht verfügbar.');
+  const future=snapshots.filter(x=>x.offset>0).sort((a,b)=>a.offset-b.offset);
+  renderAnalysis({snapshots:[get(-10)||get(0),get(0)],future});
+  lastAnalysis=Date.now();
+ }catch(e){
+  analysisEls.local.textContent='Analyse nicht verfügbar';
+  analysisEls.arrival.textContent='–';analysisEls.end.textContent='–';analysisEls.strongest.textContent='–';
+  analysisEls.movement.textContent='Keine belastbare Bewegungsanalyse möglich.';
+  analysisEls.foot.textContent=e.message||'Die DWD-Rasterdaten konnten nicht ausgewertet werden.';
+ }finally{
+  if(manual){analysisEls.run.disabled=false;analysisEls.run.textContent='↻ Analysieren';}
+ }
+}
+analysisEls.run.addEventListener('click',()=>runRainAnalysis(true));
+analysisEls.alerts.addEventListener('click',async()=>{
+ if(!('Notification'in window)){analysisEls.alertState.textContent='Browser unterstützt keine Benachrichtigungen';return;}
+ const permission=await Notification.requestPermission();
+ if(permission==='granted'){
+  alertsEnabled=true;try{localStorage.setItem('rainmap-alerts','1');}catch(e){}
+  analysisEls.alertState.textContent='Warnungen aktiv (bei geöffneter App)';
+  analysisEls.alerts.textContent='✓ Warnungen aktiviert';
+  if(lastAnalysis===null)runRainAnalysis(false);
+ }else analysisEls.alertState.textContent='Benachrichtigungen nicht freigegeben';
+});
+
 createRadarFrame(0);
 requestRadar(0);
 function startGPS(){
@@ -314,6 +520,8 @@ function startGPS(){
  watchId=navigator.geolocation.watchPosition(p=>applyPosition(p,false),gpsError,{enableHighAccuracy:true,timeout:20000,maximumAge:15000});
 }
 document.getElementById('locate').onclick=()=>{if(gpsReady){fitCoverage();marker.openPopup();}else startGPS();};
+setInterval(()=>{if(alertsEnabled&&gpsReady&&document.visibilityState==='visible'&&(!lastAnalysis||Date.now()-lastAnalysis>9*60*1000))runRainAnalysis(false);},60000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&alertsEnabled&&gpsReady&&(!lastAnalysis||Date.now()-lastAnalysis>9*60*1000))runRainAnalysis(false);});
 update(); startGPS();
 setTimeout(()=>{if(!gpsReady && gpsBadge.textContent==='● GPS sucht …')setRadarStatus('Warte auf GPS-Freigabe …','warn');},1800);
 </script>
