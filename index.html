@@ -290,10 +290,16 @@ function createRadarFrame(offset){
   }
  });
  frame.timeoutId=setTimeout(()=>{
-  if(frame.loading&&!frame.ready){
+  if(frame.loading){
    frame.loading=false;
-   if(Number(slider.value)===offset)setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
-   dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Bitte „↻“ drücken oder später erneut versuchen.';
+   if(frame.ready){
+    if(Number(slider.value)===offset)setRadarStatus('Radarbild teilweise geladen','warn');
+    dataDetail.textContent='Ein Teil der DWD-Radarkacheln wurde geladen. Die Karte bleibt sichtbar; einzelne Bereiche können fehlen.';
+   }else{
+    if(Number(slider.value)===offset)setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
+    dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Bitte „↻“ drücken oder später erneut versuchen.';
+   }
+   refreshCockpit();
   }
  },20000);
  layer.once('load',()=>{
