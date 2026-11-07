@@ -34,9 +34,9 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
  </section>
  <section class="panel">
   <div class="mapwrap"><div id="map"></div><div class="maptag">DWD · RADAR / NOWCAST</div></div>
-  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Jetzt</div></div><button class="secondary" id="now">⟲ Jetzt</button></div>
+  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><button class="secondary" id="now">⟲ Letzte Messung</button></div>
   <div class="controls"><button class="play" id="play">▶</button><input id="slider" type="range" min="-30" max="90" step="5" value="0" aria-label="Radarzeitpunkt"></div>
-  <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+90 Min.</span></div>
+  <div class="time"><span>−30 Min.</span><span>Letzte Messung</span><span>+90 Min.</span></div>
   <div class="legend"><span><i class="dot" style="background:#b9e8ff;border:1px solid #8fb9d4"></i>leichter Regen</span><span><i class="dot" style="background:#65baff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
  </section>
 
@@ -70,7 +70,9 @@ const radarOptions={
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',
  transparent:true,version:'1.1.1',opacity:.82,interpolations:'bilinear'
 };
-let radarBaseTime=Math.floor(Date.now()/300000)*300000;
+// RADVOR-Daten werden im Mittel erst 3–4 Minuten nach dem Analysezeitpunkt bereitgestellt.
+// Deshalb verwenden wir den letzten vollständig abgeschlossenen 5-Minuten-Lauf.
+let radarBaseTime=Math.floor(Date.now()/300000)*300000-300000;
 function radarTime(offset){
  return new Date(radarBaseTime+offset*60000).toISOString();
 }
@@ -79,8 +81,8 @@ let radar=null, playbackTimer=null, playing=false, playbackWait=null;
 const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state={textContent:''}, play=document.getElementById('play');
 
 function showTime(offset){
- label.textContent=offset===0?'Jetzt':(offset>0?'+' :'')+offset+' Min.';
- state.textContent=offset>0?'Nowcast-Zeitpunkt':offset<0?'Vergangener Radarzeitpunkt':'Aktueller Radarzeitpunkt';
+ label.textContent=offset===0?'Letzte Messung':(offset>0?'+' :'')+offset+' Min.';
+ state.textContent=offset>0?'DWD-RADVOR-Prognose':offset<0?'Vergangener Radarzeitpunkt':'Letzte verfügbare DWD-Analyse';
 }
 function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
@@ -156,6 +158,19 @@ function update(){
 }
 slider.addEventListener('input',update);
 document.getElementById('now').onclick=()=>{slider.value=0;update()};
+// Beim geöffneten Tab die Zeitbasis regelmäßig erneuern, damit die Prognose nicht veraltet.
+function refreshRadarTimeline(){
+ const nextBase=Math.floor(Date.now()/300000)*300000-300000;
+ if(nextBase===radarBaseTime)return;
+ stopPlayback();
+ for(const frame of radarFrames.values())map.removeLayer(frame.layer);
+ radarFrames.clear();
+ radar=null;
+ radarBaseTime=nextBase;
+ slider.value=0;
+ update();
+}
+setInterval(refreshRadarTimeline,60000);
 function stopPlayback(){
  playing=false;
  playbackWait=null;
