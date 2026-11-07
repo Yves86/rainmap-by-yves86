@@ -41,7 +41,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;he
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.leaflet-control-attribution{font-size:9px!important}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(175deg) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter}
+.leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(.78) contrast(.92)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(175deg) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter}
 </style>
 </head>
 <body>
@@ -73,8 +73,11 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
 const fallback=[51.85,11.58];
 const map=L.map('map',{zoomControl:false}).setView(fallback,8);
 L.control.zoom({position:'bottomright'}).addTo(map);
-// Dunkle CARTO-Basiskarte mit OpenStreetMap-Daten und gut lesbaren Orts-/Straßennamen.
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
+// API-schlüsselfreie OpenStreetMap-Kacheln; CSS-Filter erzeugt die dunkle Darstellung lokal.
+const baseMap=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ maxZoom:19,attribution:'© OpenStreetMap',className:'dark-basemap',crossOrigin:true
+}).addTo(map);
+baseMap.on('tileerror',()=>{const detail=document.getElementById('dataDetail');if(detail)detail.textContent='Die Basiskarte konnte nicht vollständig geladen werden. Bitte Internetverbindung prüfen.';});
 const marker=L.circleMarker(fallback,{radius:8,color:'#fff',weight:2,fillColor:'#57d8f5',fillOpacity:1}).addTo(map).bindPopup('GPS-Standort');
 let selectedRadius=20, coverageRadius=20000;
 let accuracyCircle=null, coverageCircle=null, watchId=null, gpsReady=false;
