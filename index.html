@@ -23,7 +23,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;he
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.leaflet-control-attribution{font-size:9px!important}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(175deg)}
+.leaflet-control-attribution{font-size:9px!important}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(7) hue-rotate(175deg) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter}
 </style>
 </head>
 <body>
@@ -68,7 +68,7 @@ function gpsError(error){
 }
 const radarOptions={
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',
- transparent:true,version:'1.1.1',opacity:.82
+ transparent:true,version:'1.1.1',opacity:.82,interpolations:'bilinear'
 };
 let radarBaseTime=Math.floor(Date.now()/300000)*300000;
 function radarTime(offset){
