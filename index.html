@@ -162,7 +162,6 @@ function setRadius(km){
  selectedRadius=km;coverageRadius=km*1000;
  try{localStorage.setItem('rainmap-radius',String(km));}catch(e){}
  radiusLabel.textContent=km+' km';
- refreshCockpit();
  document.querySelectorAll('[data-radius]').forEach(button=>{
   const active=Number(button.dataset.radius)===km;
   button.classList.toggle('active',active);
@@ -184,7 +183,8 @@ function applyPosition(position, centerMap=false){
  gpsReady=true; placeName.textContent='Dein GPS-Standort';
  placeDetail.textContent=lat.toFixed(5)+'°, '+lon.toFixed(5)+'° · Genauigkeit ca. '+accuracy+' m';
  gpsBadge.textContent='● GPS aktiv';
- if(typeof runRainAnalysis==='function'&&lastAnalysis===null)runRainAnalysis(false);
+ // Die aufwendige Rasteranalyse startet erst, wenn das erste Radarbild sichtbar geladen ist.
+ if(typeof runRainAnalysis==='function'&&lastAnalysis===null&&radar&&radarFrames.get(0)?.ready)runRainAnalysis(false);
 }
 function gpsError(error){
  const messages={1:'Standortfreigabe abgelehnt',2:'GPS-Position nicht verfügbar',3:'GPS-Anfrage dauerte zu lange'};
@@ -203,7 +203,7 @@ const radarOptions={
 // Deshalb verwenden wir den letzten vollständig abgeschlossenen 5-Minuten-Lauf.
 let radarBaseTime=Math.floor(Date.now()/300000)*300000-300000;
 function radarTime(offset){
- return new Date(radarBaseTime+offset*60000).toISOString().replace('.000Z','Z');
+ return new Date(radarBaseTime+offset*60000).toISOString();
 }
 function clockTime(timestamp){
  return new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp))+' Uhr';
@@ -255,6 +255,7 @@ function updateRadarMetadata(offset){
  refreshCockpit();
  if(ageMinutes>15)setRadarStatus('Daten möglicherweise veraltet','warn');
 }
+refreshCockpit();
 function showTime(offset){
  label.textContent=offset===0?'Letzte Messung':(offset>0?'+' :'')+offset+' Min.';
  updateRadarMetadata(offset);
@@ -265,8 +266,8 @@ function showTime(offset){
 function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
  if(frame)return frame;
- const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/RV-Produkt/wms',{
-  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar',crossOrigin:'anonymous'
+ const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
+  ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
  });
  frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0};
  radarFrames.set(offset,frame);
@@ -285,7 +286,7 @@ function createRadarFrame(offset){
   if(frame.loading&&!frame.ready){
    frame.loading=false;
    if(Number(slider.value)===offset)setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
-   dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Die Basiskarte bleibt verfügbar.';
+   dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Bitte „↻“ drücken oder später erneut versuchen.';
   }
  },20000);
  layer.once('load',()=>{
@@ -375,7 +376,7 @@ function refreshRadarTimeline(force=false){
  const nextBase=Math.floor(Date.now()/300000)*300000-300000;
  if(nextBase===radarBaseTime&&!force)return;
  stopPlayback();
- for(const frame of radarFrames.values())map.removeLayer(frame.layer);
+ for(const frame of radarFrames.values()){clearTimeout(frame.timeoutId);map.removeLayer(frame.layer);}
  radarFrames.clear();
  radar=null;
  radarBaseTime=nextBase;
