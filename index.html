@@ -158,8 +158,8 @@ header:after{
 @keyframes meterFlow{to{background-position:200% 0}}
 @media(prefers-reduced-motion:reduce){
  .cockpit-stat{animation:none!important}
- .brand-weather{animation:rainCloudFloat 3.2s ease-in-out infinite!important}
- .brand-weather:after{animation:rainDrop 2.4s ease-in infinite!important}
+ .brand-weather{animation:none!important}
+ .brand-weather .rain-drop{animation-duration:1.35s!important}
  header:after{animation:headerScan 10s ease-in-out infinite!important}
  .cockpit-card:after{animation:cockpitSweep 12s ease-in-out infinite!important}
 }
@@ -168,16 +168,30 @@ header:after{
 header{position:relative;overflow:hidden}
 .brand{display:flex;align-items:center;gap:5px;position:relative}
 .brand-weather{
- position:relative;display:inline-flex;align-items:center;justify-content:center;
- transform-origin:50% 75%;font-size:1.12em;line-height:1;
+ position:relative;display:inline-block;flex:0 0 56px;width:56px;height:49px;
+ transform-origin:50% 75%;line-height:1;vertical-align:middle;
  filter:drop-shadow(0 0 7px rgba(87,216,245,.32));
  animation:rainCloudFloat 1.9s ease-in-out infinite!important;
 }
-.brand-weather:after{
- content:"💧";position:absolute;right:2px;bottom:-.52em;font-size:.42em;
- filter:drop-shadow(0 0 5px rgba(87,216,245,.7));
- animation:rainDrop 1.45s ease-in infinite!important;
+.brand-cloud{
+ position:absolute;left:0;top:-5px;width:56px;text-align:center;
+ font-size:42px;line-height:1;z-index:2;
+ filter:drop-shadow(0 2px 5px rgba(210,242,255,.24));
 }
+.rain-drop{
+ position:absolute;z-index:1;top:30px;width:5px;height:9px;
+ border-radius:70% 70% 70% 0;
+ background:linear-gradient(145deg,#d9fbff 0%,#62d9ff 48%,#2688e9 100%);
+ box-shadow:0 0 6px rgba(87,216,245,.62);
+ transform:rotate(-45deg);
+ animation:rainFall .92s cubic-bezier(.42,0,.72,.42) infinite!important;
+}
+.drop-1{left:7px;animation-delay:-.08s!important;animation-duration:.88s!important}
+.drop-2{left:17px;animation-delay:-.42s!important;animation-duration:1.02s!important}
+.drop-3{left:28px;animation-delay:-.23s!important;animation-duration:.94s!important}
+.drop-4{left:40px;animation-delay:-.61s!important;animation-duration:1.08s!important}
+.drop-5{left:12px;top:34px;animation-delay:-.71s!important;animation-duration:1.12s!important}
+.drop-6{left:34px;top:33px;animation-delay:-.34s!important;animation-duration:.98s!important}
 header:after{
  content:"";position:absolute;left:-35%;bottom:5px;width:28%;height:2px;
  border-radius:50%;pointer-events:none;
@@ -189,11 +203,11 @@ header:after{
  0%,100%{transform:translateY(0) rotate(-3deg);filter:drop-shadow(0 0 5px rgba(87,216,245,.22))}
  50%{transform:translateY(-5px) rotate(4deg);filter:drop-shadow(0 0 13px rgba(87,216,245,.8))}
 }
-@keyframes rainDrop{
- 0%{transform:translateY(-3px) scale(.65);opacity:0}
- 25%{opacity:1}
- 85%{transform:translateY(8px) scale(1);opacity:.95}
- 100%{transform:translateY(11px) scale(.7);opacity:0}
+@keyframes rainFall{
+ 0%{transform:translate3d(0,-3px,0) rotate(-45deg) scale(.62);opacity:0}
+ 12%{opacity:1}
+ 72%{opacity:.96}
+ 100%{transform:translate3d(3px,17px,0) rotate(-45deg) scale(.82);opacity:0}
 }
 @keyframes headerScan{
  0%{left:-35%;opacity:0}
@@ -205,7 +219,12 @@ header:after{
 </style>
 </head>
 <body>
-<header><div><div class="brand"><span class="brand-weather" aria-hidden="true">🌧️</span> Rain<span>Map</span></div><div class="sub">BY YVES86 · REGENRADAR</div></div><div class="status" id="gpsBadge" hidden style="display:none!important">● GPS wartet</div></header>
+<header><div><div class="brand"><span class="brand-weather" aria-hidden="true">
+ <span class="brand-cloud">☁️</span>
+ <i class="rain-drop drop-1"></i><i class="rain-drop drop-2"></i>
+ <i class="rain-drop drop-3"></i><i class="rain-drop drop-4"></i>
+ <i class="rain-drop drop-5"></i><i class="rain-drop drop-6"></i>
+</span> Rain<span>Map</span></div><div class="sub">BY YVES86 · REGENRADAR</div></div><div class="status" id="gpsBadge" hidden style="display:none!important">● GPS wartet</div></header>
 <main>
  <section class="panel gps-location-panel" aria-hidden="true" hidden style="display:none!important">
   <div class="place"><div><div class="small">DEIN RADARSTANDORT</div><strong id="placeName">Standort wird ermittelt …</strong><div class="small" id="placeDetail">GPS wird angefragt</div></div><button class="secondary" id="locate">◎ Mein Standort</button></div>
