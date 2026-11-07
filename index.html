@@ -74,7 +74,7 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
     <div class="analysis-value"><span>Aktuelle Lage</span><strong id="localRain">Wird geprüft …</strong></div>
     <div class="analysis-value"><span>Nächster Regen</span><strong id="rainArrival">Wird berechnet …</strong></div>
     <div class="analysis-value"><span>Voraussichtliches Ende</span><strong id="rainEnd">–</strong></div>
-    <div class="analysis-value"><span>Stärkste Radarfläche</span><strong id="strongestCell">–</strong></div>
+    <div class="analysis-value"><span>Stärkster Niederschlag</span><strong id="strongestCell">–</strong></div>
    </div>
    <div class="analysis-detail" id="movementDetail">Zugrichtung und Geschwindigkeit werden aus aufeinanderfolgenden Radaraufnahmen ermittelt.</div>
    <div class="analysis-actions"><button class="secondary" id="enableAlerts" type="button">♧ Regenwarnungen aktivieren</button><span class="small" id="alertState">Warnungen aus</span></div>
@@ -137,6 +137,7 @@ function applyPosition(position, centerMap=false){
  gpsReady=true; placeName.textContent='Dein GPS-Standort';
  placeDetail.textContent=lat.toFixed(5)+'°, '+lon.toFixed(5)+'° · Genauigkeit ca. '+accuracy+' m';
  gpsBadge.textContent='● GPS aktiv';
+ if(typeof runRainAnalysis==='function'&&lastAnalysis===null)runRainAnalysis(false);
 }
 function gpsError(error){
  const messages={1:'Standortfreigabe abgelehnt',2:'GPS-Position nicht verfügbar',3:'GPS-Anfrage dauerte zu lange'};
@@ -388,7 +389,9 @@ function radarSnapshot(frame){
   let sx=0,sy=0,sl=0,minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
   for(const p of group){sx+=p.x;sy+=p.y;sl+=p.lum;minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
   const gx=sx/group.length,gy=sy/group.length;
-  components.push({x:gx,y:gy,latlng:map.unproject([gx*step,gy*step],zoom),count:group.length,avgLum:sl/group.length,bounds:{minX,maxX,minY,maxY}});
+  const avgLum=sl/group.length;
+  const intensity=avgLum>=205?1:avgLum>=155?2:avgLum>=105?3:4;
+  components.push({x:gx,y:gy,latlng:map.unproject([gx*step,gy*step],zoom),count:group.length,avgLum,intensity,bounds:{minX,maxX,minY,maxY}});
  }
  return {offset:frame.offset,zoom,step,cells,components,tileCount};
 }
@@ -438,16 +441,17 @@ function renderAnalysis(result){
  const current=result.snapshots[0], user=marker.getLatLng(), local=pointHasRain(current,user);
  analysisEls.local.textContent=local?'Regen am Standort erkannt':'Am Standort derzeit kein Regen erkannt';
  const future=result.future;
- let firstWet=null,lastWet=null,seenWet=false,ended=false;
+ let firstWet=null,lastWet=local?0:null,seenWet=Boolean(local),ended=false;
  for(const snap of future){
   const wet=pointHasRain(snap,user);
   if(wet===null)continue;
-  if(wet){if(firstWet===null)firstWet=snap.offset;lastWet=snap.offset;seenWet=true;}
+  if(wet){if(firstWet===null&&!local)firstWet=snap.offset;lastWet=snap.offset;seenWet=true;}
   else if(seenWet&&!ended){ended=true;}
  }
  if(local){
   analysisEls.arrival.textContent='Bereits Regen';
-  analysisEls.end.textContent=lastWet!==null&&ended?'voraussichtlich bis +'+lastWet+' Min.':'im 2-h-Fenster noch nicht sicher';
+  analysisEls.end.textContent=ended?'voraussichtlich bis +'+lastWet+' Min.':'im 2-h-Fenster noch nicht sicher';
+  notifyRain('current-rain-'+radarBaseTime,'RainMap: Regen am Standort','Der DWD-RADVOR-Nowcast erkennt aktuell Niederschlag an deinem Standort.');
  }else if(firstWet!==null){
   analysisEls.arrival.textContent=fmtEta(firstWet);
   analysisEls.end.textContent=ended?'voraussichtlich um '+clockTime(radarBaseTime+lastWet*60000):'im 2-h-Fenster nicht absehbar';
@@ -458,9 +462,10 @@ function renderAnalysis(result){
  }
  const currentComponents=current.components||[];
  if(currentComponents.length){
-  const strongest=currentComponents.slice().sort((a,b)=>b.count-a.count)[0];
+  const strongest=currentComponents.slice().sort((a,b)=>b.intensity-a.intensity||b.count-a.count)[0];
   const km=map.distance(user,strongest.latlng)/1000;
-  analysisEls.strongest.textContent='Größte Fläche · '+km.toFixed(1)+' km entfernt';
+  const levels=['','leicht','mäßig','stark','sehr stark'];
+  analysisEls.strongest.textContent=levels[strongest.intensity]+' · '+km.toFixed(1)+' km entfernt';
  }else analysisEls.strongest.textContent='Keine Regenfläche erkannt';
  const movement=analyzeMovement(result.snapshots[0],result.snapshots[1]);
  if(movement){
