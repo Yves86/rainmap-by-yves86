@@ -476,57 +476,86 @@ function waitForRadarFrame(offset){
   frame.layer.once('load',()=>finish(frame.ready?frame:null));
  });
 }
-function radarSnapshot(frame){
- const layer=frame.layer, tiles=layer._tiles||{}, step=4, side=64, cells=new Map();
- let zoom=map.getZoom(), tileCount=0;
- try{
-  for(const tileKey in tiles){
-   const tile=tiles[tileKey], img=tile.el, c=tile.coords;
-   if(!tile.current||!img||!img.complete||!img.naturalWidth||!c)continue;
-   const canvas=document.createElement('canvas');canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;
-   const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
-   const data=ctx.getImageData(0,0,canvas.width,canvas.height).data;tileCount++;
-   for(let py=0;py<canvas.height;py+=step){
-    for(let px=0;px<canvas.width;px+=step){
-     const i=(py*canvas.width+px)*4, alpha=data[i+3];
-     if(alpha<45)continue;
-     const rr=data[i],gg=data[i+1],bb=data[i+2];
-     const lum=.299*rr+.587*gg+.114*bb;
-     const key=(c.x*side+Math.floor(px/step))+','+(c.y*side+Math.floor(py/step));
-     cells.set(key,{x:c.x*side+Math.floor(px/step),y:c.y*side+Math.floor(py/step),lum:lum});
+const analysisBounds={west:5.5,east:15.5,south:47,north:55.5,width:1200,height:1020};
+const analysisSnapshotCache=new Map();
+function radarSnapshot(offset){
+ if(analysisSnapshotCache.has(offset))return analysisSnapshotCache.get(offset);
+ const promise=new Promise((resolve,reject)=>{
+  const b=analysisBounds;
+  const params=new URLSearchParams({
+   SERVICE:'WMS',VERSION:'1.1.1',REQUEST:'GetMap',
+   LAYERS:'dwd:Radar_rv_product_1x1km_ger',STYLES:'',
+   FORMAT:'image/png',TRANSPARENT:'true',SRS:'EPSG:4326',
+   BBOX:[b.west,b.south,b.east,b.north].join(','),
+   WIDTH:String(b.width),HEIGHT:String(b.height),TIME:radarTime(offset)
+  });
+  const source='https://maps.dwd.de/geoserver/dwd/wms?'+params.toString();
+  // Der Proxy erhält nur einen festen Deutschland-Ausschnitt, niemals den GPS-Punkt.
+  const proxy='https://wsrv.nl/?url='+encodeURIComponent(source)+'&w='+b.width+'&h='+b.height+'&fit=fill&output=png';
+  const img=new Image();
+  img.crossOrigin='anonymous';
+  img.onload=()=>{
+   try{
+    if(img.naturalWidth!==b.width||img.naturalHeight!==b.height)throw new Error('Der Bilddienst hat kein vollständiges DWD-Radarbild geliefert.');
+    const canvas=document.createElement('canvas');canvas.width=b.width;canvas.height=b.height;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(img,0,0);
+    const data=ctx.getImageData(0,0,b.width,b.height).data;
+    const step=4,cells=new Map();
+    for(let py=0;py<b.height;py+=step){
+     for(let px=0;px<b.width;px+=step){
+      const i=(py*b.width+px)*4,alpha=data[i+3];
+      if(alpha<45)continue;
+      const lum=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+      const x=Math.floor(px/step),y=Math.floor(py/step);
+      cells.set(x+','+y,{x,y,lum});
+     }
     }
-   }
-  }
- }catch(e){return {error:'CORS',message:'Der Browser erlaubt keinen Pixelzugriff auf die DWD-Rasterkacheln. Die Kartenanzeige funktioniert weiterhin, die automatische Zellenauswertung ist hier aber nicht freigegeben.'};}
- if(!tileCount)return {error:'EMPTY',message:'Noch keine auswertbaren DWD-Radarkacheln im sichtbaren Kartenausschnitt.'};
- const visited=new Set(), components=[];
- for(const [key,cell] of cells){
-  if(visited.has(key))continue;
-  const stack=[cell], group=[];visited.add(key);
-  while(stack.length){
-   const p=stack.pop();group.push(p);
-   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
-    if(!dx&&!dy)continue;
-    const nk=(p.x+dx)+','+(p.y+dy);
-    if(!visited.has(nk)&&cells.has(nk)){visited.add(nk);stack.push(cells.get(nk));}
-   }
-  }
-  if(group.length<3)continue;
-  let sx=0,sy=0,sl=0,minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-  for(const p of group){sx+=p.x;sy+=p.y;sl+=p.lum;minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);}
-  const gx=sx/group.length,gy=sy/group.length;
-  const avgLum=sl/group.length;
-  const intensity=avgLum>=205?1:avgLum>=155?2:avgLum>=105?3:4;
-  components.push({x:gx,y:gy,latlng:map.unproject([gx*step,gy*step],zoom),count:group.length,avgLum,intensity,bounds:{minX,maxX,minY,maxY}});
- }
- return {offset:frame.offset,zoom,step,cells,components,tileCount};
+    if(!cells.size)throw new Error('Das DWD-Bild enthält aktuell keine auswertbaren Niederschlagsflächen.');
+    const visited=new Set(),components=[];
+    for(const [key,cell] of cells){
+     if(visited.has(key))continue;
+     const stack=[cell],group=[];visited.add(key);
+     while(stack.length){
+      const p=stack.pop();group.push(p);
+      for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+       if(!dx&&!dy)continue;
+       const nk=(p.x+dx)+','+(p.y+dy);
+       if(!visited.has(nk)&&cells.has(nk)){visited.add(nk);stack.push(cells.get(nk));}
+      }
+     }
+     if(group.length<3)continue;
+     let sx=0,sy=0,sl=0;
+     for(const p of group){sx+=p.x;sy+=p.y;sl+=p.lum;}
+     const gx=sx/group.length,gy=sy/group.length,avgLum=sl/group.length;
+     const lng=b.west+((gx*step+step/2)/b.width)*(b.east-b.west);
+     const lat=b.north-((gy*step+step/2)/b.height)*(b.north-b.south);
+     const intensity=avgLum>=205?1:avgLum>=155?2:avgLum>=105?3:4;
+     components.push({x:gx,y:gy,latlng:L.latLng(lat,lng),count:group.length,avgLum,intensity});
+    }
+    resolve({offset,step,cells,components,bounds:b,width:b.width,height:b.height});
+   }catch(e){reject(e);}
+  };
+  img.onerror=()=>reject(new Error('Der DWD-Bildabruf über den Auswertungsdienst ist fehlgeschlagen. Die Radarkarte selbst bleibt verfügbar.'));
+  img.src=proxy;
+ });
+ analysisSnapshotCache.set(offset,promise);
+ promise.catch(()=>analysisSnapshotCache.delete(offset));
+ return promise;
 }
 function pointHasRain(snapshot,latlng){
  if(!snapshot||snapshot.error)return null;
- const p=map.project(latlng,snapshot.zoom),gx=Math.floor(p.x/snapshot.step),gy=Math.floor(p.y/snapshot.step);
- for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if(snapshot.cells.has((gx+dx)+','+(gy+dy)))return snapshot.cells.get((gx+dx)+','+(gy+dy));
+ const b=snapshot.bounds,step=snapshot.step;
+ const px=((latlng.lng-b.west)/(b.east-b.west))*b.width;
+ const py=((b.north-latlng.lat)/(b.north-b.south))*b.height;
+ if(px<0||px>=b.width||py<0||py>=b.height)return false;
+ const gx=Math.floor(px/step),gy=Math.floor(py/step);
+ for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+  const cell=snapshot.cells.get((gx+dx)+','+(gy+dy));
+  if(cell)return cell;
+ }
  return false;
 }
+
 function bearingBetween(a,b){
  const rad=Math.PI/180,lat1=a.lat*rad,lat2=b.lat*rad,dlon=(b.lng-a.lng)*rad;
  const y=Math.sin(dlon)*Math.cos(lat2);
@@ -609,26 +638,17 @@ async function runRainAnalysis(manual=true){
  if(!gpsReady){analysisEls.local.textContent='GPS-Standort fehlt';analysisEls.foot.textContent='Bitte zuerst den Standort freigeben, damit die lokale Regenanalyse möglich ist.';return;}
  analysisRunning=true;
  if(manual){analysisEls.run.disabled=true;analysisEls.run.textContent='Analysiere …';}
- analysisEls.foot.textContent='DWD-Radarbilder werden geladen und pixelweise ausgewertet. Das kann kurz dauern.';
+ analysisEls.foot.textContent='DWD-Radarbilder für Deutschland werden geladen und unabhängig von den sichtbaren Kartenkacheln ausgewertet.';
  try{
-  // Erst die aktuelle Aufnahme prüfen. Bei fehlendem Pixelzugriff keine weiteren WMS-Bilder anfordern.
-  const currentFrame=await waitForRadarFrame(0);
-  if(!currentFrame)throw new Error('Die aktuelle DWD-Radaraufnahme ist nicht verfügbar. Die Kartenebene wird separat weiter geladen.');
-  const currentSnapshot=radarSnapshot(currentFrame);
-  if(currentSnapshot.error)throw new Error(currentSnapshot.message);
-  // Erst nach erfolgreicher Pixelprüfung sparsam weitere Zeitpunkte abrufen.
-  const offsets=[-10,10,20,30];
-  const frames=[currentFrame];
-  for(const offset of offsets){
-   const frame=await waitForRadarFrame(offset);
-   if(frame)frames.push(frame);
-  }
-  const snapshots=frames.map(frame=>frame===currentFrame?currentSnapshot:radarSnapshot(frame));
-  const bad=snapshots.find(x=>x.error);
-  if(bad)throw new Error(bad.message);
-  const get=o=>snapshots.find(x=>x.offset===o);
+  // Separate, landesweite PNG-Abfrage über einen CORS-fähigen Bilddienst.
+  // An diesen Dienst wird nur der feste Deutschland-Ausschnitt übermittelt, nicht die GPS-Position.
+  const offsets=[-10,0,10,20,30];
+  const snapshots=await Promise.all(offsets.map(offset=>radarSnapshot(offset)));
+  const current=snapshots.find(x=>x.offset===0);
+  const previous=snapshots.find(x=>x.offset===-10)||current;
   const future=snapshots.filter(x=>x.offset>0).sort((a,b)=>a.offset-b.offset);
-  renderAnalysis({snapshots:[get(-10)||currentSnapshot,currentSnapshot],future});
+  if(!current)throw new Error('Die aktuelle DWD-Radaraufnahme ist nicht verfügbar.');
+  renderAnalysis({snapshots:[previous,current],future});
   lastAnalysis=Date.now();
  }catch(e){
   analysisEls.local.textContent='Analyse nicht verfügbar';
@@ -643,6 +663,7 @@ async function runRainAnalysis(manual=true){
   if(manual){analysisEls.run.disabled=false;analysisEls.run.textContent='↻ Analysieren';}
  }
 }
+
 analysisEls.run.addEventListener('click',()=>runRainAnalysis(true));
 analysisEls.alerts.addEventListener('click',async()=>{
  if(!('Notification'in window)){analysisEls.alertState.textContent='Browser unterstützt keine Benachrichtigungen';return;}
