@@ -171,6 +171,11 @@ header:after{
  <section class="panel">
   <div class="mapwrap"><div id="map"></div></div>
   <div class="radius-row"><div class="radius-title">RADAR-UMKREIS · <strong id="radiusLabel">20 km</strong></div><div class="radius-buttons" role="group" aria-label="Radar-Umkreis"><button type="button" data-radius="5" aria-pressed="false">5 km</button><button type="button" data-radius="10" aria-pressed="false">10 km</button><button type="button" data-radius="20" class="active" aria-pressed="true">20 km</button><button type="button" data-radius="30" aria-pressed="false">30 km</button></div></div>
+  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><div style="display:flex;gap:6px"><button class="secondary" id="now">⟲ Jetzt</button></div></div>
+  <div class="controls"><button class="play" id="play" type="button" aria-label="Animation starten" aria-pressed="false">▶</button><input id="slider" type="range" min="-30" max="120" step="5" value="0" aria-label="Radarzeitpunkt"></div>
+  <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+120 Min.</span></div>
+  <div class="small" style="margin-top:10px">NIEDERSCHLAGSINTENSITÄT · qualitative Radarfarben</div>
+  <div class="legend"><span><i class="dot" style="background:#f2fbff;border:1px solid #b8d8ed"></i>leichter Regen</span><span><i class="dot" style="background:#78c5ff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
   <section class="cockpit-card" aria-label="RainMap Radar-Cockpit">
    <div class="cockpit-head"><div><div class="cockpit-kicker">RAINMAP COCKPIT</div><div class="cockpit-title">Dein Regen-Überblick</div></div><button class="cockpit-focus" id="focusMap" type="button">◎ Karte zu mir</button></div>
    <div class="cockpit-grid">
@@ -198,11 +203,7 @@ header:after{
    <div class="analysis-actions"><button class="secondary" id="enableAlerts" type="button">♧ Regenwarnungen aktivieren</button><span class="small" id="alertState">Warnungen aus</span></div>
    <div class="analysis-foot" id="analysisFoot">Die Analyse nutzt DWD-RADVOR-Rasterbilder. Es werden keine mm/h-Werte aus der Kartenfarbe erfunden.</div>
   </section>
-  <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><div style="display:flex;gap:6px"><button class="secondary" id="now">⟲ Jetzt</button></div></div>
-  <div class="controls"><button class="play" id="play" type="button" aria-label="Animation starten" aria-pressed="false">▶</button><input id="slider" type="range" min="-30" max="120" step="5" value="0" aria-label="Radarzeitpunkt"></div>
-  <div class="time"><span>−30 Min.</span><span>Jetzt</span><span>+120 Min.</span></div>
-  <div class="small" style="margin-top:10px">NIEDERSCHLAGSINTENSITÄT · qualitative Radarfarben</div>
-  <div class="legend"><span><i class="dot" style="background:#f2fbff;border:1px solid #b8d8ed"></i>leichter Regen</span><span><i class="dot" style="background:#78c5ff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
+
 
  </section>
 
