@@ -142,8 +142,8 @@ const map=L.map('map',{zoomControl:false}).setView(fallback,8);
 L.control.zoom({position:'bottomright'}).addTo(map);
 L.control.scale({position:'bottomleft',metric:true,imperial:false,maxWidth:90}).addTo(map);
 // Deutscher, API-schlüsselfreier OpenStreetMap-Kachelserver. Eigene URL umgeht alte CARTO-Kacheln aus dem Browsercache.
-const baseMap=L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png?rainmap=20261107',{
- maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende',className:'dark-basemap',crossOrigin:true
+const baseMap=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+ subdomains:'abc',maxZoom:19,attribution:'© OpenStreetMap-Mitwirkende',className:'dark-basemap',crossOrigin:true
 }).addTo(map);
 baseMap.on('tileerror',()=>{const detail=document.getElementById('dataDetail');if(detail)detail.textContent='Die Basiskarte konnte nicht vollständig geladen werden. Bitte Internetverbindung prüfen.';});
 const marker=L.circleMarker(fallback,{radius:8,color:'#fff',weight:2,fillColor:'#57d8f5',fillOpacity:1}).addTo(map).bindPopup('GPS-Standort');
@@ -203,7 +203,7 @@ const radarOptions={
 // Deshalb verwenden wir den letzten vollständig abgeschlossenen 5-Minuten-Lauf.
 let radarBaseTime=Math.floor(Date.now()/300000)*300000-300000;
 function radarTime(offset){
- return new Date(radarBaseTime+offset*60000).toISOString();
+ return new Date(radarBaseTime+offset*60000).toISOString().replace('.000Z','Z');
 }
 function clockTime(timestamp){
  return new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp))+' Uhr';
@@ -265,15 +265,32 @@ function showTime(offset){
 function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
  if(frame)return frame;
- const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
+ const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/RV-Produkt/wms',{
   ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar',crossOrigin:'anonymous'
  });
  frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0};
  radarFrames.set(offset,frame);
- layer.on('tileload',()=>{frame.successfulTiles++;});
+ layer.on('tileload',()=>{
+  frame.successfulTiles++;
+  if(!frame.ready){
+   frame.ready=true;
+   if(Number(slider.value)===offset){
+    displayRadarFrame(offset);
+    setRadarStatus('Radarbild wird vervollständigt …','warn');
+   }
+  }
+ });
  layer.on('tileerror',()=>{frame.failedTiles++;});
+ frame.timeoutId=setTimeout(()=>{
+  if(frame.loading&&!frame.ready){
+   frame.loading=false;
+   if(Number(slider.value)===offset)setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
+   dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Die Basiskarte bleibt verfügbar.';
+  }
+ },20000);
  layer.once('load',()=>{
   frame.loading=false;
+  clearTimeout(frame.timeoutId);
   if(frame.successfulTiles===0){
    map.removeLayer(layer);
    radarFrames.delete(offset);
@@ -342,7 +359,7 @@ function requestRadar(offset){
   else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
   else setRadarStatus('Radarbild geladen','ok');
  }
- preloadRadarFrames(offset);
+ // Weitere Frames erst bei Animation laden, nicht parallel beim Start.
 }
 function update(){
  const offset=Number(slider.value);
@@ -434,7 +451,8 @@ function waitForRadarFrame(offset){
  return new Promise(resolve=>{
   let settled=false;
   const finish=value=>{if(settled)return;settled=true;clearTimeout(timer);resolve(value);};
-  const timer=setTimeout(()=>finish(null),18000);
+  const timer=setTimeout(()=>finish(frame.ready?frame:null),16000);
+  frame.layer.once('tileload',()=>finish(frame.ready?frame:null));
   frame.layer.once('load',()=>finish(frame.ready?frame:null));
  });
 }
@@ -573,9 +591,15 @@ async function runRainAnalysis(manual=true){
  if(manual){analysisEls.run.disabled=true;analysisEls.run.textContent='Analysiere …';}
  analysisEls.foot.textContent='DWD-Radarbilder werden geladen und pixelweise ausgewertet. Das kann kurz dauern.';
  try{
-  const offsets=[-10,0,5,10,15,20,30,45,60,90,120];
-  const frames=await Promise.all(offsets.map(waitForRadarFrame));
-  const snapshots=frames.filter(Boolean).map(radarSnapshot);
+  // Kleine, zeitlich gestaffelte Auswahl statt elf paralleler WMS-Abfragen.
+  const offsets=[-10,0,10,20,30];
+  const frames=[];
+  for(const offset of offsets){
+   const frame=await waitForRadarFrame(offset);
+   if(frame)frames.push(frame);
+   if(offset===0&&!frame)throw new Error('Der DWD liefert aktuell keine Radarkachel. Bitte später erneut versuchen.');
+  }
+  const snapshots=frames.map(radarSnapshot);
   const bad=snapshots.find(x=>x.error);
   if(bad)throw new Error(bad.message);
   const get=o=>snapshots.find(x=>x.offset===o);
@@ -588,9 +612,11 @@ async function runRainAnalysis(manual=true){
   analysisEls.arrival.textContent='–';analysisEls.end.textContent='–';analysisEls.strongest.textContent='–';
   analysisEls.movement.textContent='Keine belastbare Bewegungsanalyse möglich.';
   analysisEls.foot.textContent=e.message||'Die DWD-Rasterdaten konnten nicht ausgewertet werden.';
+  refreshCockpit();
  }finally{
   lastAnalysis=Date.now();
   analysisRunning=false;
+  refreshCockpit();
   if(manual){analysisEls.run.disabled=false;analysisEls.run.textContent='↻ Analysieren';}
  }
 }
