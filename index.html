@@ -179,11 +179,11 @@ header{position:relative;overflow:hidden}
  filter:drop-shadow(0 2px 5px rgba(210,242,255,.24));
 }
 .rain-drop{
- position:absolute;z-index:1;top:30px;width:5px;height:9px;
- border-radius:70% 70% 70% 0;
- background:linear-gradient(145deg,#d9fbff 0%,#62d9ff 48%,#2688e9 100%);
+ position:absolute;z-index:1;top:30px;width:6px;height:11px;
+ border-radius:0;
+ clip-path:polygon(50% 0%,68% 28%,86% 49%,98% 68%,96% 82%,86% 93%,69% 99%,50% 100%,31% 99%,14% 93%,4% 82%,2% 68%,14% 49%,32% 28%);
+ background:linear-gradient(180deg,#e4fcff 0%,#75dcff 48%,#2688e9 100%);
  box-shadow:0 0 6px rgba(87,216,245,.62);
- transform:rotate(-45deg);
  animation:rainFall .92s cubic-bezier(.42,0,.72,.42) infinite!important;
 }
 .drop-1{left:7px;animation-delay:-.08s!important;animation-duration:.88s!important}
@@ -204,10 +204,10 @@ header:after{
  50%{transform:translateY(-5px) rotate(4deg);filter:drop-shadow(0 0 13px rgba(87,216,245,.8))}
 }
 @keyframes rainFall{
- 0%{transform:translate3d(0,-3px,0) rotate(-45deg) scale(.62);opacity:0}
+ 0%{transform:translate3d(0,-3px,0) scale(.72);opacity:0}
  12%{opacity:1}
  72%{opacity:.96}
- 100%{transform:translate3d(3px,17px,0) rotate(-45deg) scale(.82);opacity:0}
+ 100%{transform:translate3d(0,17px,0) scale(.9);opacity:0}
 }
 @keyframes headerScan{
  0%{left:-35%;opacity:0}
