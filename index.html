@@ -74,7 +74,7 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
     <div class="analysis-value"><span>Aktuelle Lage</span><strong id="localRain">Wird geprüft …</strong></div>
     <div class="analysis-value"><span>Nächster Regen</span><strong id="rainArrival">Wird berechnet …</strong></div>
     <div class="analysis-value"><span>Voraussichtliches Ende</span><strong id="rainEnd">–</strong></div>
-    <div class="analysis-value"><span>Stärkster Niederschlag</span><strong id="strongestCell">–</strong></div>
+    <div class="analysis-value"><span>Stärkste Radar-Farbklasse</span><strong id="strongestCell">–</strong></div>
    </div>
    <div class="analysis-detail" id="movementDetail">Zugrichtung und Geschwindigkeit werden aus aufeinanderfolgenden Radaraufnahmen ermittelt.</div>
    <div class="analysis-actions"><button class="secondary" id="enableAlerts" type="button">♧ Regenwarnungen aktivieren</button><span class="small" id="alertState">Warnungen aus</span></div>
@@ -335,7 +335,7 @@ const analysisEls={
  run:document.getElementById('runAnalysis'),alerts:document.getElementById('enableAlerts'),
  alertState:document.getElementById('alertState')
 };
-let lastAnalysis=null, alertsEnabled=false, lastAlertKey='';
+let lastAnalysis=null, analysisRunning=false, alertsEnabled=false, lastAlertKey='';
 try{alertsEnabled=localStorage.getItem('rainmap-alerts')==='1';}catch(e){}
 analysisEls.alertState.textContent=alertsEnabled?'Warnungen aktiv (bei geöffneter App)':'Warnungen aus';
 analysisEls.alerts.textContent=alertsEnabled?'✓ Warnungen aktiviert':'♧ Regenwarnungen aktivieren';
@@ -438,8 +438,9 @@ function notifyRain(key,title,body){
  try{new Notification(title,{body,icon:'./icon.svg',tag:'rainmap-rain-alert'});}catch(e){}
 }
 function renderAnalysis(result){
- const current=result.snapshots[0], user=marker.getLatLng(), local=pointHasRain(current,user);
- analysisEls.local.textContent=local?'Regen am Standort erkannt':'Am Standort derzeit kein Regen erkannt';
+ const current=result.snapshots[1], user=marker.getLatLng(), local=pointHasRain(current,user);
+ const localLevels=['leichter Regen','mäßiger Regen','starker Regen','sehr starke Radar-Farbklasse'];
+ analysisEls.local.textContent=local?(localLevels[local.intensity-1]||'Regen erkannt'):'Am Standort derzeit kein Regen erkannt';
  const future=result.future;
  let firstWet=null,lastWet=local?0:null,seenWet=Boolean(local),ended=false;
  for(const snap of future){
@@ -471,7 +472,7 @@ function renderAnalysis(result){
  if(movement){
   analysisEls.movement.textContent='Bewegung der größten verfolgbaren Zelle: '+bearingText(movement.bearing)+' · ca. '+Math.round(movement.kmh)+' km/h. Richtung und Tempo aus zwei Radaraufnahmen; lokale Ankunft wird vorrangig aus RADVOR abgelesen.';
  }else analysisEls.movement.textContent='Für eine sichere Zugrichtung fehlen aktuell passende Regenzellen in beiden Vergleichsaufnahmen.';
- analysisEls.foot.textContent='Auswertung aus DWD-RADVOR-Bildern im sichtbaren Kartenausschnitt. Ankunft und Ende sind Nowcast-Schätzungen in 5- bis 15-Minuten-Schritten, keine garantierten Messwerte.';
+ analysisEls.foot.textContent='Auswertung aus DWD-RADVOR-Bildern im sichtbaren Kartenausschnitt. Regenstärke ist eine qualitative Einordnung der dargestellten Farbklassen, kein mm/h-Messwert. Ankunft und Ende sind Nowcast-Schätzungen, keine Garantien.';
  const largest=currentComponents.length?currentComponents.reduce((a,b)=>a.count>b.count?a:b):null;
  if(largest&&largest.count>20){
   const dist=map.distance(user,largest.latlng)/1000;
@@ -479,7 +480,9 @@ function renderAnalysis(result){
  }
 }
 async function runRainAnalysis(manual=true){
+ if(analysisRunning)return;
  if(!gpsReady){analysisEls.local.textContent='GPS-Standort fehlt';analysisEls.foot.textContent='Bitte zuerst den Standort freigeben, damit die lokale Regenanalyse möglich ist.';return;}
+ analysisRunning=true;
  if(manual){analysisEls.run.disabled=true;analysisEls.run.textContent='Analysiere …';}
  analysisEls.foot.textContent='DWD-Radarbilder werden geladen und pixelweise ausgewertet. Das kann kurz dauern.';
  try{
@@ -499,6 +502,8 @@ async function runRainAnalysis(manual=true){
   analysisEls.movement.textContent='Keine belastbare Bewegungsanalyse möglich.';
   analysisEls.foot.textContent=e.message||'Die DWD-Rasterdaten konnten nicht ausgewertet werden.';
  }finally{
+  lastAnalysis=Date.now();
+  analysisRunning=false;
   if(manual){analysisEls.run.disabled=false;analysisEls.run.textContent='↻ Analysieren';}
  }
 }
