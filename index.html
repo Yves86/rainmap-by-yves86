@@ -18,9 +18,26 @@ main{padding:0 12px 18px;max-width:760px;margin:auto}
 .place{display:flex;justify-content:space-between;align-items:center;gap:10px}.place strong{font-size:18px}.small{color:var(--muted);font-size:12px}
 #map{height:53vh;min-height:330px;border-radius:14px;overflow:hidden;background:#101923}
 .leaflet-control-attribution{background:rgba(7,17,31,.82)!important;color:#9fb2c8!important}.leaflet-control-attribution a{color:#57d8f5!important}
-.mapwrap{position:relative}.maptag{position:absolute;z-index:500;top:12px;left:12px;background:#07111fe8;border:1px solid #34475c;border-radius:10px;padding:7px 10px;font-size:11px}
+.mapwrap{position:relative}.maptag,.radar-age{position:absolute;z-index:500;top:12px;background:#07111fe8;border:1px solid #34475c;border-radius:10px;padding:7px 10px;font-size:11px}
+.maptag{left:12px}.radar-age{right:12px;color:#a9eacb}
+.radius-row{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px}
+.radius-title{font-size:11px;color:var(--muted);letter-spacing:.7px}
+.radius-buttons{display:flex;gap:6px}
+.radius-buttons button{background:#1b2c41;color:#c7d5e4;border:1px solid #344b65;border-radius:9px;padding:8px 11px;font-size:12px}
+.radius-buttons button.active{background:#173d50;color:#68dcf5;border-color:#348ba0;font-weight:700}
+.data-summary{margin-top:14px;background:#0b1828;border:1px solid #243a51;border-radius:13px;padding:12px}
+.data-summary-head{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:11px;letter-spacing:.7px;color:var(--muted)}
+.data-state{font-weight:700;letter-spacing:0;color:#a9eacb}
+.data-state.warn{color:#ffd08a}.data-state.error{color:#ff9a9a}
+.data-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+.data-cell{background:#122338;border-radius:9px;padding:10px;min-width:0}
+.data-cell span{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
+.data-cell strong{font-size:14px;font-weight:700}
+.data-detail{font-size:11px;color:var(--muted);line-height:1.45;margin:10px 0 0}
+.forecast-note{font-size:11px;color:var(--muted);line-height:1.45;margin:11px 0 0}
+@media(max-width:390px){.radar-age{top:54px;left:12px;right:auto}.data-grid{grid-template-columns:1fr 1fr}.radius-row{align-items:flex-start;flex-direction:column}.radius-buttons{width:100%}.radius-buttons button{flex:1}}
 .controls{display:flex;align-items:center;gap:10px;margin-top:13px}.play{flex:0 0 48px;width:48px;height:44px;padding:0;background:var(--cyan);color:#06121d;border:0;border-radius:12px;font-weight:800;font-size:15px}
-input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;height:14px;color:var(--muted);font-size:11px;margin:-8px 0 0 58px;width:calc(100% - 58px)}.time span{position:absolute;top:0;white-space:nowrap}.time span:nth-child(1){left:0}.time span:nth-child(2){left:25%;transform:translateX(-50%)}.time span:nth-child(3){right:0}
+input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;height:14px;color:var(--muted);font-size:11px;margin:-8px 0 0 58px;width:calc(100% - 58px)}.time span{position:absolute;top:0;white-space:nowrap}.time span:nth-child(1){left:0}.time span:nth-child(2){left:20%;transform:translateX(-50%)}.time span:nth-child(3){right:0}
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
@@ -34,11 +51,20 @@ button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;borde
   <div class="place"><div><div class="small">DEIN RADARSTANDORT</div><strong id="placeName">Standort wird ermittelt …</strong><div class="small" id="placeDetail">GPS wird angefragt</div></div><button class="secondary" id="locate">◎ Mein Standort</button></div>
  </section>
  <section class="panel">
-  <div class="mapwrap"><div id="map"></div><div class="maptag">DWD · RADAR / NOWCAST</div></div>
+  <div class="mapwrap"><div id="map"></div><div class="maptag">DWD · RADVOR · 1 KM</div><div class="radar-age" id="radarAgeBadge">Daten werden geladen</div></div>
+  <div class="radius-row"><div class="radius-title">RADAR-UMKREIS · <strong id="radiusLabel">20 km</strong></div><div class="radius-buttons" role="group" aria-label="Radar-Umkreis"><button type="button" data-radius="5">5 km</button><button type="button" data-radius="10">10 km</button><button type="button" data-radius="20" class="active" aria-pressed="true">20 km</button></div></div>
+  <div class="data-summary" aria-live="polite">
+   <div class="data-summary-head"><span>DWD-RADARDATEN</span><strong class="data-state" id="dataState">Wird geladen …</strong></div>
+   <div class="data-grid"><div class="data-cell"><span>Letzte Analyse</span><strong id="analysisTime">–</strong></div><div class="data-cell"><span>Ausgewählter Zeitpunkt</span><strong id="validTime">–</strong></div></div>
+   <p class="data-detail" id="dataDetail">Die aktuelle DWD-Radarkachel wird abgerufen.</p>
+  </div>
   <div class="row" style="margin-top:13px"><div><div class="small">AUSGEWÄHLTER ZEITPUNKT</div><div class="readout" id="timeLabel">Letzte Messung</div></div><button class="secondary" id="now">⟲ Letzte Messung</button></div>
-  <div class="controls"><button class="play" id="play">▶</button><input id="slider" type="range" min="-30" max="90" step="5" value="0" aria-label="Radarzeitpunkt"></div>
-  <div class="time"><span>−30 Min.</span><span>0 Min.</span><span>+90 Min.</span></div>
+  <div class="controls"><button class="play" id="play">▶</button><input id="slider" type="range" min="-30" max="120" step="5" value="0" aria-label="Radarzeitpunkt"></div>
+  <div class="time"><span>−30 Min.</span><span>0 Min.</span><span>+120 Min.</span></div>
+  <div class="small" style="margin-top:10px">NIEDERSCHLAGSINTENSITÄT · qualitative Radarfarben</div>
   <div class="legend"><span><i class="dot" style="background:#b9e8ff;border:1px solid #8fb9d4"></i>leichter Regen</span><span><i class="dot" style="background:#65baff"></i>mäßiger Regen</span><span><i class="dot" style="background:#1675dc"></i>starker Regen</span><span><i class="dot" style="background:#082b83"></i>sehr starker Regen</span></div>
+  <p class="forecast-note">Die Vorschau zeigt den DWD-RADVOR-Nowcast. Prognosen können sich besonders bei Schauern und Gewittern kurzfristig ändern. Die eingefärbte WMS-Karte liefert allein noch keinen belastbaren mm/h-Messwert für deinen GPS-Punkt.</p>
+  <p class="note" style="margin-top:10px">Daten: Deutscher Wetterdienst (DWD) · Basiskarte: © OpenStreetMap, © CARTO</p>
  </section>
 
 </main>
@@ -50,26 +76,45 @@ L.control.zoom({position:'bottomright'}).addTo(map);
 // Dunkle CARTO-Basiskarte mit OpenStreetMap-Daten und gut lesbaren Orts-/Straßennamen.
 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
 const marker=L.circleMarker(fallback,{radius:8,color:'#fff',weight:2,fillColor:'#57d8f5',fillOpacity:1}).addTo(map).bindPopup('GPS-Standort');
-const coverageRadius=20000;
+let selectedRadius=20, coverageRadius=20000;
 let accuracyCircle=null, coverageCircle=null, watchId=null, gpsReady=false;
+const radiusLabel=document.getElementById('radiusLabel');
+function fitCoverage(){
+ if(coverageCircle)map.fitBounds(coverageCircle.getBounds(),{padding:[18,18],maxZoom:selectedRadius===5?12:selectedRadius===10?11:10});
+}
+function updateCoverage(pt,fit=false){
+ if(coverageCircle)map.removeLayer(coverageCircle);
+ coverageCircle=L.circle(pt,{radius:coverageRadius,color:'#57d8f5',weight:1.5,dashArray:'6 7',fillColor:'#57d8f5',fillOpacity:.025,interactive:false}).addTo(map);
+ if(fit)fitCoverage();
+}
+function setRadius(km){
+ selectedRadius=km;coverageRadius=km*1000;
+ radiusLabel.textContent=km+' km';
+ document.querySelectorAll('[data-radius]').forEach(button=>{
+  const active=Number(button.dataset.radius)===km;
+  button.classList.toggle('active',active);
+  button.setAttribute('aria-pressed',String(active));
+ });
+ if(gpsReady)updateCoverage(marker.getLatLng(),true);
+}
+document.querySelectorAll('[data-radius]').forEach(button=>button.addEventListener('click',()=>setRadius(Number(button.dataset.radius))));
+setRadius(20);
 const placeName=document.getElementById('placeName'), placeDetail=document.getElementById('placeDetail'), gpsBadge=document.getElementById('gpsBadge');
 function applyPosition(position, centerMap=false){
  const lat=position.coords.latitude, lon=position.coords.longitude, accuracy=Math.round(position.coords.accuracy);
  const pt=[lat,lon]; marker.setLatLng(pt).bindPopup('Dein GPS-Standort<br>Genauigkeit: ca. '+accuracy+' m');
  if(accuracyCircle) map.removeLayer(accuracyCircle);
  accuracyCircle=L.circle(pt,{radius:accuracy,color:'#57d8f5',weight:1,fillColor:'#57d8f5',fillOpacity:.08}).addTo(map);
- if(coverageCircle) map.removeLayer(coverageCircle);
- coverageCircle=L.circle(pt,{radius:coverageRadius,color:'#57d8f5',weight:1.5,dashArray:'6 7',fillColor:'#57d8f5',fillOpacity:.025,interactive:false}).addTo(map);
- if(centerMap || !gpsReady) map.fitBounds(coverageCircle.getBounds(),{padding:[18,18],maxZoom:10});
+ updateCoverage(pt,centerMap || !gpsReady);
  gpsReady=true; placeName.textContent='Dein GPS-Standort';
  placeDetail.textContent=lat.toFixed(5)+'°, '+lon.toFixed(5)+'° · Genauigkeit ca. '+accuracy+' m';
- gpsBadge.textContent='● GPS aktiv'; state.textContent='GPS-Position aktualisiert';
+ gpsBadge.textContent='● GPS aktiv';
 }
 function gpsError(error){
  const messages={1:'Standortfreigabe abgelehnt',2:'GPS-Position nicht verfügbar',3:'GPS-Anfrage dauerte zu lange'};
  gpsBadge.textContent='● GPS nicht aktiv'; placeName.textContent='Standort nicht verfügbar';
  placeDetail.textContent=messages[error.code]||'GPS konnte nicht gestartet werden';
- state.textContent=placeDetail.textContent;
+ setRadarStatus(placeDetail.textContent,'warn');
 }
 const radarOptions={
  layers:'dwd:Radar_rv_product_1x1km_ger',styles:'',format:'image/png',
@@ -81,13 +126,37 @@ let radarBaseTime=Math.floor(Date.now()/300000)*300000-300000;
 function radarTime(offset){
  return new Date(radarBaseTime+offset*60000).toISOString();
 }
+function clockTime(timestamp){
+ return new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp))+' Uhr';
+}
 const radarFrames=new Map();
 let radar=null, playbackTimer=null, playing=false, playbackWait=null;
-const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), state={textContent:''}, play=document.getElementById('play');
+const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), play=document.getElementById('play');
+const dataState=document.getElementById('dataState'), analysisTime=document.getElementById('analysisTime');
+const validTime=document.getElementById('validTime'), dataDetail=document.getElementById('dataDetail');
+const radarAgeBadge=document.getElementById('radarAgeBadge');
 
+function setRadarStatus(message,type='ok'){
+ dataState.className='data-state'+(type==='warn'?' warn':type==='error'?' error':'');
+ dataState.textContent=message;
+}
+function updateRadarMetadata(offset){
+ const validTimestamp=radarBaseTime+offset*60000;
+ const ageMinutes=Math.max(0,Math.round((Date.now()-radarBaseTime)/60000));
+ analysisTime.textContent=clockTime(radarBaseTime);
+ validTime.textContent=clockTime(validTimestamp);
+ radarAgeBadge.textContent='Datenstand '+clockTime(radarBaseTime).replace(' Uhr','');
+ if(ageMinutes>15){
+  radarAgeBadge.style.color='#ffd08a';
+  setRadarStatus('Daten möglicherweise veraltet','warn');
+ }else radarAgeBadge.style.color='#a9eacb';
+}
 function showTime(offset){
  label.textContent=offset===0?'Letzte Messung':(offset>0?'+' :'')+offset+' Min.';
- state.textContent=offset>0?'DWD-RADVOR-Prognose':offset<0?'Vergangener Radarzeitpunkt':'Letzte verfügbare DWD-Analyse';
+ updateRadarMetadata(offset);
+ if(offset>0)dataDetail.textContent='DWD-RADVOR-Prognose für '+clockTime(radarBaseTime+offset*60000)+'.';
+ else if(offset<0)dataDetail.textContent='Vergangene Radaraufnahme, gültig für '+clockTime(radarBaseTime+offset*60000)+'.';
+ else dataDetail.textContent='Letzte verfügbare DWD-Analyse, gültig für '+clockTime(radarBaseTime)+'.';
 }
 function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
@@ -95,26 +164,35 @@ function createRadarFrame(offset){
  const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
   ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
  });
- frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0};
+ frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0};
  radarFrames.set(offset,frame);
  layer.on('tileload',()=>{frame.successfulTiles++;});
+ layer.on('tileerror',()=>{frame.failedTiles++;});
  layer.once('load',()=>{
   frame.loading=false;
   if(frame.successfulTiles===0){
    map.removeLayer(layer);
    radarFrames.delete(offset);
+   if(Number(slider.value)===offset)setRadarStatus('DWD-Radar nicht erreichbar','error');
    if(playbackWait===offset){
     playbackWait=null;
-    if(playing)playbackTimer=setTimeout(playNextFrame,500);
+    if(playing)playbackTimer=setTimeout(playNextFrame,700);
    }
    return;
   }
   frame.ready=true;
+  if(Number(slider.value)===offset){
+   if(frame.failedTiles>0)setRadarStatus('Teilweise geladen','warn');
+   else setRadarStatus('Radarbild geladen','ok');
+   dataDetail.textContent=frame.failedTiles>0?
+    'Ein Teil der DWD-Radarkacheln konnte nicht geladen werden. Die Anzeige kann örtlich unvollständig sein.':
+    'DWD-Radarbild erfolgreich geladen. Die Analysezeit steht oben; die ausgewählte Gültigkeit wird mit dem Regler geändert.';
+  }
   if(playbackWait===offset){
    playbackWait=null;
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
-   if(playing)playbackTimer=setTimeout(playNextFrame,500);
+   if(playing)playbackTimer=setTimeout(playNextFrame,700);
   }else if(Number(slider.value)===offset){
    displayRadarFrame(offset);
    preloadRadarFrames(offset);
@@ -147,7 +225,7 @@ function pruneRadarCache(keepOffset){
 function preloadRadarFrames(offset){
  [5,10].forEach(step=>{
   const target=offset+step;
-  if(target>=-30&&target<=90&&!radarFrames.has(target))createRadarFrame(target);
+  if(target>=-30&&target<=120&&!radarFrames.has(target))createRadarFrame(target);
  });
 }
 function requestRadar(offset){
@@ -159,6 +237,8 @@ function requestRadar(offset){
 function update(){
  const offset=Number(slider.value);
  showTime(offset);
+ const frame=radarFrames.get(offset);
+ if(!frame||!frame.ready)setRadarStatus('DWD-Radar wird geladen …','warn');
  requestRadar(offset);
 }
 slider.addEventListener('input',update);
@@ -173,6 +253,7 @@ function refreshRadarTimeline(){
  radar=null;
  radarBaseTime=nextBase;
  slider.value=0;
+ setRadarStatus('Neue DWD-Analyse wird geladen …','warn');
  update();
 }
 setInterval(refreshRadarTimeline,60000);
@@ -185,7 +266,7 @@ function stopPlayback(){
 function playNextFrame(){
  if(!playing)return;
  let value=Number(slider.value)+5;
- if(value>90)value=-30;
+ if(value>120)value=-30;
  slider.value=value;
  showTime(value);
  const frame=createRadarFrame(value);
@@ -210,14 +291,14 @@ createRadarFrame(0);
 requestRadar(0);
 function startGPS(){
  if(!('geolocation' in navigator)){gpsBadge.textContent='● GPS nicht verfügbar';placeName.textContent='GPS nicht unterstützt';placeDetail.textContent='Dieser Browser stellt keine Standortfunktion bereit.';return;}
- if(!window.isSecureContext){gpsBadge.textContent='● HTTPS nötig';placeName.textContent='GPS benötigt HTTPS';placeDetail.textContent='Öffne RainMap über eine sichere https-Adresse und erlaube den Standortzugriff.';state.textContent='GPS funktioniert aus Sicherheitsgründen nur in einem sicheren Kontext.';return;}
+ if(!window.isSecureContext){gpsBadge.textContent='● HTTPS nötig';placeName.textContent='GPS benötigt HTTPS';placeDetail.textContent='Öffne RainMap über eine sichere https-Adresse und erlaube den Standortzugriff.';setRadarStatus('GPS benötigt eine sichere HTTPS-Verbindung','warn');return;}
  gpsBadge.textContent='● GPS sucht …';
  navigator.geolocation.getCurrentPosition(p=>applyPosition(p,true),gpsError,{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
  if(watchId!==null) navigator.geolocation.clearWatch(watchId);
  watchId=navigator.geolocation.watchPosition(p=>applyPosition(p,false),gpsError,{enableHighAccuracy:true,timeout:20000,maximumAge:15000});
 }
-document.getElementById('locate').onclick=()=>{if(gpsReady){if(coverageCircle)map.fitBounds(coverageCircle.getBounds(),{padding:[18,18],maxZoom:10});marker.openPopup();}else startGPS();};
+document.getElementById('locate').onclick=()=>{if(gpsReady){fitCoverage();marker.openPopup();}else startGPS();};
 update(); startGPS();
-setTimeout(()=>{if(!gpsReady && gpsBadge.textContent==='● GPS sucht …')state.textContent='Warte auf GPS-Freigabe …'},1800);
+setTimeout(()=>{if(!gpsReady && gpsBadge.textContent==='● GPS sucht …')setRadarStatus('Warte auf GPS-Freigabe …','warn');},1800);
 </script>
 </body></html>
