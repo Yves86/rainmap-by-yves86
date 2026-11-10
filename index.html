@@ -571,7 +571,7 @@ function stopPlayback(){
 function playNextFrame(){
  if(!playing)return;
  if(Number(slider.value)>=120){stopPlayback();return;}
- let value=Number(slider.value)+5;
+ const value=Number(slider.value)+5;
  slider.value=value;
  showTime(value);
  const frame=createRadarFrame(value);
@@ -581,12 +581,14 @@ function playNextFrame(){
   if(frame.failedTiles>0)setRadarStatus('Teilweise geladen','warn');
   else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
   else setRadarStatus('Radarbild geladen','ok');
-  preloadRadarFrames(value);
-  playbackTimer=setTimeout(playNextFrame,500);
  }else{
-  playbackWait=value;
-  preloadRadarFrames(value);
+  // Die Zeitleiste läuft unabhängig vom Netz weiter. Ein noch ladender Frame
+  // wird übersprungen; sobald er fertig ist, kann er beim nächsten Durchlauf
+  // ohne zusätzliche Wartezeit angezeigt werden.
+  setRadarStatus('Nächster Radarframe lädt im Hintergrund …','warn');
  }
+ preloadRadarFrames(value);
+ playbackTimer=setTimeout(playNextFrame,500);
 }
 play.onclick=()=>{
  if(playing){stopPlayback();return;}
