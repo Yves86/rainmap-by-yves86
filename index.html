@@ -407,14 +407,12 @@ function createRadarFrame(offset){
  radarFrames.set(offset,frame);
  layer.on('tileload',()=>{
   frame.successfulTiles++;
-  if(!frame.ready){
-   frame.ready=true;
-   if(Number(slider.value)===offset){
-    displayRadarFrame(offset);
-    setRadarStatus('Radarbild wird vervollständigt …','warn');
-    dataDetail.textContent='Erste DWD-Radarkacheln sind eingetroffen. Weitere Kacheln werden ergänzt.';
-    refreshCockpit();
-   }
+  // Eine einzelne Kachel ist noch kein vollständiges Radarbild.
+  // Erst das Leaflet-„load“-Ereignis weiter unten gibt den Frame frei.
+  if(frame.successfulTiles===1 && Number(slider.value)===offset){
+   setRadarStatus('DWD-Radarkacheln werden geladen …','warn');
+   dataDetail.textContent='Radarkacheln treffen ein. Das vollständige sichtbare Kartenbild wird abgewartet.';
+   refreshCockpit();
   }
  });
  layer.on('tileerror',()=>{
