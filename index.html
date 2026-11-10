@@ -424,12 +424,31 @@ function createRadarFrame(offset){
  frame.timeoutId=setTimeout(()=>{
   if(frame.loading){
    frame.loading=false;
-   if(frame.ready){
-    if(Number(slider.value)===offset)setRadarStatus('Radarbild teilweise geladen','warn');
-    dataDetail.textContent='Ein Teil der DWD-Radarkacheln wurde geladen. Die Karte bleibt sichtbar; einzelne Bereiche können fehlen.';
+   if(frame.successfulTiles>0){
+    // Sicherheitsnetz: Bei hängenden Einzelkacheln nach 20 Sekunden
+    // ein gekennzeichnetes Teilbild zeigen, statt die Animation festzuhalten.
+    frame.ready=true;
+    if(Number(slider.value)===offset){
+     setRadarStatus('Radarbild teilweise geladen','warn');
+     dataDetail.textContent='Ein Teil der DWD-Radarkacheln ist nach 20 Sekunden noch offen. Das verfügbare Teilbild wird angezeigt.';
+    }
+    if(playbackWait===offset){
+     playbackWait=null;
+     displayRadarFrame(offset);
+     preloadRadarFrames(offset);
+     if(playing)playbackTimer=setTimeout(playNextFrame,500);
+    }else if(Number(slider.value)===offset){
+     displayRadarFrame(offset);
+    }
    }else{
-    if(Number(slider.value)===offset)setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
-    dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Bitte „↻“ drücken oder später erneut versuchen.';
+    if(Number(slider.value)===offset){
+     setRadarStatus('DWD-Radar antwortet nicht – bitte erneut versuchen','error');
+     dataDetail.textContent='Der DWD-Radarserver hat innerhalb von 20 Sekunden keine Radarkachel geliefert. Bitte „↻“ drücken oder später erneut versuchen.';
+    }
+    if(playbackWait===offset){
+     playbackWait=null;
+     if(playing)playbackTimer=setTimeout(playNextFrame,500);
+    }
    }
    refreshCockpit();
   }
