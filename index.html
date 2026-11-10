@@ -343,7 +343,7 @@ function clockTime(timestamp){
  return new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'}).format(new Date(timestamp))+' Uhr';
 }
 const radarFrames=new Map();
-let radar=null, playbackTimer=null, playing=false, playbackWait=null;
+let radar=null, playbackTimer=null, playing=false, playbackWait=null, preloading=false, preloadCancelled=false;
 const slider=document.getElementById('slider'), label=document.getElementById('timeLabel'), play=document.getElementById('play');
 const dataState=document.getElementById('dataState'), analysisTime=document.getElementById('analysisTime');
 const validTime=document.getElementById('validTime'), dataDetail=document.getElementById('dataDetail');
@@ -397,13 +397,16 @@ function showTime(offset){
  else if(offset<0)dataDetail.textContent='Vergangene Radaraufnahme, gültig für '+clockTime(radarBaseTime+offset*60000)+'.';
  else dataDetail.textContent='Letzte verfügbare DWD-Analyse, gültig für '+clockTime(radarBaseTime)+'.';
 }
+function settleRadarFrame(frame){
+ frame.waiters.splice(0).forEach(resolve=>resolve(frame));
+}
 function createRadarFrame(offset){
  let frame=radarFrames.get(offset);
  if(frame)return frame;
  const layer=L.tileLayer.wms('https://maps.dwd.de/geoserver/dwd/wms',{
   ...radarOptions,TIME:radarTime(offset),opacity:0,updateWhenIdle:true,keepBuffer:2,className:'rain-blue-radar'
  });
- frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0};
+ frame={offset,layer,ready:false,loading:true,lastUsed:Date.now(),successfulTiles:0,failedTiles:0,waiters:[]};
  radarFrames.set(offset,frame);
  layer.on('tileload',()=>{
   frame.successfulTiles++;
@@ -450,6 +453,7 @@ function createRadarFrame(offset){
      if(playing)playbackTimer=setTimeout(playNextFrame,500);
     }
    }
+   settleRadarFrame(frame);
    refreshCockpit();
   }
  },20000);
@@ -463,6 +467,7 @@ function createRadarFrame(offset){
     setRadarStatus('DWD-Radar nicht erreichbar','error');
     dataDetail.textContent='Der DWD hat für diesen Zeitpunkt keine Radarkacheln geliefert. Bitte später erneut aktualisieren.';
    }
+   settleRadarFrame(frame);
    refreshCockpit();
    if(playbackWait===offset){
     playbackWait=null;
@@ -489,6 +494,7 @@ function createRadarFrame(offset){
    preloadRadarFrames(offset);
   }
   refreshCockpit();
+  settleRadarFrame(frame);
   if(offset===0&&gpsReady&&lastAnalysis===null&&typeof runRainAnalysis==='function')runRainAnalysis(false);
  });
  layer.addTo(map);
@@ -505,7 +511,7 @@ function displayRadarFrame(offset){
  return true;
 }
 function pruneRadarCache(keepOffset){
- if(radarFrames.size<=10)return;
+ if(radarFrames.size<=40)return;
  const candidates=[...radarFrames.values()]
   .filter(frame=>frame.offset!==keepOffset&&frame.layer!==radar)
   .sort((a,b)=>a.lastUsed-b.lastUsed);
@@ -520,6 +526,27 @@ function preloadRadarFrames(offset){
   const target=offset+step;
   if(target>=-30&&target<=120&&!radarFrames.has(target))createRadarFrame(target);
  });
+}
+async function preloadAllRadarFrames(){
+ if(preloading)return false;
+ preloading=true;preloadCancelled=false;
+ const queue=[];
+ for(let offset=-30;offset<=120;offset+=5)queue.push(offset);
+ let completed=0;
+ const workers=Array.from({length:3},async()=>{
+  while(queue.length&&!preloadCancelled){
+   const offset=queue.shift();
+   const frame=createRadarFrame(offset);
+   frame.lastUsed=Date.now();
+   if(!frame.ready&&frame.loading)await new Promise(resolve=>frame.waiters.push(resolve));
+   completed++;
+   setRadarStatus('Radarbilder werden vorbereitet · '+completed+'/31','warn');
+   dataDetail.textContent='Die 31 Radar-Zeitstufen werden vorgeladen. Die Animation startet automatisch, sobald der Ladevorgang abgeschlossen ist.';
+  }
+ });
+ await Promise.all(workers);
+ preloading=false;
+ return !preloadCancelled;
 }
 function requestRadar(offset){
  const frame=createRadarFrame(offset);
@@ -590,13 +617,22 @@ function playNextFrame(){
  preloadRadarFrames(value);
  playbackTimer=setTimeout(playNextFrame,500);
 }
-play.onclick=()=>{
- if(playing){stopPlayback();return;}
+play.onclick=async()=>{
+ if(playing||preloading){
+  preloadCancelled=true;
+  stopPlayback();
+  return;
+ }
+ if(Number(slider.value)>=120)slider.value=-30;
+ play.textContent='…';
+ play.setAttribute('aria-label','Radarbilder werden vorgeladen');
+ setRadarStatus('Radarbilder werden vorbereitet …','warn');
+ const ready=await preloadAllRadarFrames();
+ if(!ready)return;
  playing=true;
  play.textContent='Ⅱ';
  play.setAttribute('aria-label','Animation pausieren');
  play.setAttribute('aria-pressed','true');
- if(Number(slider.value)>=120)slider.value=-30;
  playNextFrame();
 };
 
