@@ -620,6 +620,7 @@ function playNextFrame(){
 play.onclick=async()=>{
  if(playing||preloading){
   preloadCancelled=true;
+  for(const frame of radarFrames.values())settleRadarFrame(frame);
   stopPlayback();
   return;
  }
