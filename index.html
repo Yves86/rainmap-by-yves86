@@ -55,7 +55,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}.time{position:relative;he
 .readout{font-size:18px;font-weight:700;margin-top:3px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 button.secondary{background:#1b2c41;color:#eaf4ff;border:1px solid #344b65;border-radius:10px;padding:9px 12px}
 .note{font-size:11px;color:var(--muted);line-height:1.45}.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;font-size:11px;color:#b9c9d9}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
-.leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(1.28) contrast(.82) saturate(.32)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(5.5) hue-rotate(184deg) brightness(1.18) contrast(1.06) blur(1.35px);transform:scale(1.006);transform-origin:center;will-change:filter;transition:opacity .35s ease}
+.leaflet-control-attribution{font-size:9px!important}.dark-basemap{filter:invert(1) hue-rotate(180deg) brightness(1.28) contrast(.82) saturate(.32)}.rain-blue-radar{filter:grayscale(1) sepia(1) saturate(5.5) hue-rotate(184deg) brightness(1.18) contrast(1.06);will-change:opacity;transition:opacity .5s ease}
 
 /* RainMap refresh – UI außerhalb der eigentlichen Radarkarte */
 :root{--panel2:#0b192a;--glow:rgba(87,216,245,.14)}
@@ -582,7 +582,7 @@ function playNextFrame(){
   else if(Math.round((Date.now()-radarBaseTime)/60000)>15)setRadarStatus('Daten möglicherweise veraltet','warn');
   else setRadarStatus('Radarbild geladen','ok');
   preloadRadarFrames(value);
-  playbackTimer=setTimeout(playNextFrame,700);
+  playbackTimer=setTimeout(playNextFrame,500);
  }else{
   playbackWait=value;
   preloadRadarFrames(value);
